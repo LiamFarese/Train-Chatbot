@@ -15,7 +15,7 @@ export default function MessageBlock(props) {
 
     const { colors } = useTheme();
 
-    function GetMessageBoxes() {
+    function getMessageBoxes() {
 
         messageBoxes = []
         key = 0
@@ -53,7 +53,7 @@ export default function MessageBlock(props) {
                 
             </Text>
 
-            {GetMessageBoxes()}
+            {getMessageBoxes()}
 
         </View>
     )

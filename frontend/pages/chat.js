@@ -2,10 +2,75 @@ import { View, Text, ScrollView, TextInput, Pressable, Dimensions } from "react-
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
+import { useState } from "react";
 
 export default function Chat() {
 
     const colors = useTheme().colors;
+
+    // alternates between 'owner' and 'you', owner being first
+    const [messages, setMessages] = useState([
+
+        [
+            "Hello, la la la la la la la la la la la la la I am a very long message!",
+            "do you even care?",
+        ],
+
+        [
+            "not really mate",
+            "not really...",
+        ],
+
+        [
+            "You're so mean! :(",
+        ]
+    ]);
+
+    const [youAreLastSender, setYouAreLastSender] = useState(false)
+    const [currentTyping, setCurrentTyping] = useState("")
+
+    function getMessageBlocks(messages)
+    {
+        messageBlocks = []
+        key = 0
+        you = false;
+
+        messages.forEach((message) => {
+    
+            messageBlocks.push(
+                
+                <MessageBlock 
+
+                    left={!you} 
+                    key={'messageBlock' + key++}
+                    owner={you ? 'you' : 'owner'}
+                    messages={message}
+                />
+            )
+
+            you = !you
+        })
+
+        return messageBlocks
+    }
+
+    function submitMessage(message) {
+
+        newMessages = messages
+
+        if (youAreLastSender) {
+
+            newMessages[newMessages.length - 1].push(message)
+            console.log(newMessages)
+        }
+        else {
+
+            newMessages.push([message])
+            setYouAreLastSender(true)
+        }
+
+        setMessages(newMessages)
+    }
 
     return (
 
@@ -26,39 +91,8 @@ export default function Chat() {
                     padding: 8,
                     justifyContent: 'flex-end',
                 }]}>
-                    <MessageBlock
-                    
-                        messages={[
+                    {getMessageBlocks(messages)}
 
-                            "Hello, la la la la la la la la la la la la la I am a very long message!",
-                            "do you even care?"
-                        ]}
-
-                        left={true}
-                        owner={'Chatbot'}
-                    />
-                    
-                    <MessageBlock
-                    
-                        messages={[
-
-                            "not really mate",
-                            "not really..."
-                        ]}
-
-                        owner={'You'}
-                    />
-                    
-                    <MessageBlock
-                    
-                        messages={[
-
-                            "You're so mean! :("
-                        ]}
-
-                        left={true}
-                        owner={'Chatbot'}
-                    />
                 </ScrollView>
             </View>
 
@@ -66,7 +100,7 @@ export default function Chat() {
 
                 styles(colors).header,
             {
-
+                marginTop: 16,
             }]}>
                 <View style={[
                     
@@ -76,10 +110,14 @@ export default function Chat() {
                     <TextInput style={[
 
                         styles(colors).container,
+                        styles(colors).text,
                     {
                         alignItems: 'center',
                         flex: 1,
-                    }]}/>
+                    }]}
+                        placeholder={'Type message here...'}
+                        onChangeText={newText => setCurrentTyping(newText)}
+                    />
 
                     <View style={{marginRight: 4}}/>
 
@@ -89,7 +127,14 @@ export default function Chat() {
                         styles(colors).primary,
                     {
                         alignItems: 'center',
-                    }]}>
+                    }]}
+                    
+                        onPress={() => 
+                            {
+                                submitMessage(currentTyping)
+                                this.textInput.clear()
+                            }}
+                    >
                         <Text style={[
 
                             styles(colors).text,
