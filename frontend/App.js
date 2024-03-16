@@ -9,10 +9,9 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
 
-  const theme = lightColors;
+  const theme = DefaultTheme;
 
   return (
-
     <NavigationContainer theme={theme}>
       <Stack.Navigator>
         
@@ -22,7 +21,6 @@ export default function App() {
           component={Chat}
           options={{headerShown: false}}
         />
-
       </Stack.Navigator>
     </NavigationContainer>
   );

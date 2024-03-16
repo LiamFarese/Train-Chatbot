@@ -1,12 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TextInput } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, Dimensions } from "react-native";
 import { useTheme } from '@react-navigation/native';
-import MessageBox from "../components/messageBox";
+import MessageBlock from "../components/messageBlock";
+import styles from '../styles';
 
 export default function Chat() {
 
     const colors = useTheme().colors;
-
-
 
     return (
 
@@ -14,63 +13,94 @@ export default function Chat() {
 
             flex: 1,
             backgroundColor: colors.background,
-            
         }}>
-
             <View style={{
 
-                backgroundColor: colors.card,
-                flexDirection: 'row',
-                justifyContent: 'center',
+                flex: 1,
             }}>
-                
-            </View>
-
-            <View style={{
-
-                flex: 1
-            }}>
-                <ScrollView contentContainerStyle={{
+                <ScrollView contentContainerStyle={[
                     
+                    styles(colors).maxWidth,
+                {
                     flex: 1,
-                    alignSelf: 'center',
-                    maxWidth: 720,
                     padding: 8,
-                }}>
-
-                    <MessageBox fill={true}>
-                        Hello, la la la la la la la la la la la la la I am a very long message!{'\n'}{'\n'}
-                        Is that okay?
-                    </MessageBox>
-                    <MessageBox>Calm down Good Sir!</MessageBox>
-                    <MessageBox fill={true}>fine...</MessageBox>
+                    justifyContent: 'flex-end',
+                }]}>
+                    <MessageBlock
                     
+                        messages={[
+
+                            "Hello, la la la la la la la la la la la la la I am a very long message!",
+                            "do you even care?"
+                        ]}
+
+                        left={true}
+                        owner={'Chatbot'}
+                    />
+                    
+                    <MessageBlock
+                    
+                        messages={[
+
+                            "not really mate",
+                            "not really..."
+                        ]}
+
+                        owner={'You'}
+                    />
+                    
+                    <MessageBlock
+                    
+                        messages={[
+
+                            "You're so mean! :("
+                        ]}
+
+                        left={true}
+                        owner={'Chatbot'}
+                    />
                 </ScrollView>
             </View>
 
-            <View style={{
+            <View style={[
 
-                backgroundColor: colors.card,
-                flexDirection: 'row',
-                justifyContent: 'center',
-            }}>
-                <TextInput style={{
+                styles(colors).header,
+            {
+
+            }]}>
+                <View style={[
                     
-                    flex: 1,
-                    backgroundColor: '#fff',
-                    maxWidth: 720,
-            
-                    borderColor: colors.border,
-                    borderRadius: 26,
-                    borderWidth: 2,
-            
-                    backgroundColor: colors.backgroundColor,
+                    styles(colors).headerInner,
+                    styles(colors).maxWidth,
+                ]}>
+                    <TextInput style={[
 
-                    padding: 8,
-                    paddingLeft: 16,
-                    paddingRight: 16,
-                    margin: 4,
-                }}/>
+                        styles(colors).container,
+                    {
+                        alignItems: 'center',
+                        flex: 1,
+                    }]}/>
+
+                    <View style={{marginRight: 4}}/>
+
+                    <Pressable style={[
+
+                        styles(colors).container,
+                        styles(colors).primary,
+                    {
+                        alignItems: 'center',
+                    }]}>
+                        <Text style={[
+
+                            styles(colors).text,
+                        {
+                            color: colors.card
+                        }]}>
+                            Send
+
+                        </Text>
+                    </Pressable>
+                </View>
             </View>
         </View>
     )
