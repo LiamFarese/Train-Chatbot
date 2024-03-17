@@ -18,12 +18,26 @@ export default styles = (colors) => StyleSheet.create({
     text: {
 
         fontSize: 18,
+        color: colors.text,
+    },
+
+    title: {
+
+        fontSize: 24,
+        fontWeight: 'bold',
     },
 
     primary: {
 
         borderColor: colors.primary,
         backgroundColor: colors.primary,
+    },
+
+    footer: {
+
+        backgroundColor: colors.backgroundColor,
+        padding: 8,
+        alignContent: 'center',
     },
 
     header: {
@@ -33,9 +47,10 @@ export default styles = (colors) => StyleSheet.create({
         alignContent: 'center',
     },
 
-    headerInner: {
+    headerFooterInner: {
 
         flexDirection: 'row',
+        alignItems: 'center',
     },
 
     maxWidth: {

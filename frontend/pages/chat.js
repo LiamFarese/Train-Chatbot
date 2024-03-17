@@ -1,13 +1,17 @@
-import { View, Text, ScrollView, TextInput, Pressable, Dimensions } from "react-native";
+import { View, Text, ScrollView, TextInput, Pressable, StatusBar } from "react-native";
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export default function Chat() {
 
-    const colors = useTheme().colors;
 
+    // States //
+
+    const colors = useTheme().colors;
+    const [youAreLastSender, setYouAreLastSender] = useState(true)
+    const [currentTyping, setCurrentTyping] = useState("")
     // alternates between 'owner' and 'you', owner being first
     const [messages, setMessages] = useState([
 
@@ -20,14 +24,15 @@ export default function Chat() {
             "not really mate",
             "not really...",
         ],
-
-        [
-            "You're so mean! :(",
-        ]
     ]);
 
-    const [youAreLastSender, setYouAreLastSender] = useState(false)
-    const [currentTyping, setCurrentTyping] = useState("")
+
+    // References //
+
+    textInput = useRef()
+
+
+    // Functions //
 
     function getMessageBlocks(messages)
     {
@@ -43,7 +48,7 @@ export default function Chat() {
 
                     left={!you} 
                     key={'messageBlock' + key++}
-                    owner={you ? 'you' : 'owner'}
+                    owner={you ? 'You' : 'Chatbot'}
                     messages={message}
                 />
             )
@@ -54,22 +59,27 @@ export default function Chat() {
         return messageBlocks
     }
 
-    function submitMessage(message) {
+    function submitMessage() {
 
-        newMessages = messages
+        if (currentTyping == undefined) return
+        if (currentTyping == '') return
+
+        textInput.current.clear()
+        textInput.current.blur()
+
+        newMessages = [...messages]
 
         if (youAreLastSender) {
 
-            newMessages[newMessages.length - 1].push(message)
-            console.log(newMessages)
+            newMessages[newMessages.length - 1].push(currentTyping)
         }
         else {
-
+        
             newMessages.push([message])
             setYouAreLastSender(true)
         }
 
-        setMessages(newMessages)
+        return newMessages
     }
 
     return (
@@ -79,6 +89,69 @@ export default function Chat() {
             flex: 1,
             backgroundColor: colors.background,
         }}>
+            <StatusBar/>
+
+
+            {/* Top Header */}
+
+            <View style={[styles(colors).header]}>
+
+                <View style={[
+                    
+                    styles(colors).headerFooterInner,
+                    styles(colors).maxWidth,
+                {
+                    justifyContent: 'flex-end',
+                }]}>
+                    <Text style={[
+
+                        styles(colors).text,
+                        styles(colors).title,
+                    {
+                        flex: 1,
+                        margin: 4,
+                    }]}>
+                        
+                        Train Chatbot
+                    </Text>
+
+                    <Pressable style={[
+
+                        styles(colors).container,
+                    {
+                        alignItems: 'center',
+                    }]}
+                    >
+                        <Text style={[styles(colors).text,]}>About</Text>
+
+                    </Pressable>
+
+                    <View style={{marginRight: 4}}/>
+
+                    <Pressable style={[
+
+                        styles(colors).container,
+                        styles(colors).primary,
+                    {
+                        alignItems: 'center',
+                    }]}
+                    >
+                        <Text style={[
+
+                            styles(colors).text,
+                        {
+                            color: colors.card
+                        }]}>
+                            Help
+
+                        </Text>
+                    </Pressable>
+                </View>
+            </View>
+
+            
+            {/* Messages */}
+
             <View style={{
 
                 flex: 1,
@@ -95,16 +168,19 @@ export default function Chat() {
 
                 </ScrollView>
             </View>
+            
+
+            {/* Footer (text box and send button) */}
 
             <View style={[
 
-                styles(colors).header,
+                styles(colors).footer,
             {
                 marginTop: 16,
             }]}>
                 <View style={[
                     
-                    styles(colors).headerInner,
+                    styles(colors).headerFooterInner,
                     styles(colors).maxWidth,
                 ]}>
                     <TextInput style={[
@@ -117,6 +193,8 @@ export default function Chat() {
                     }]}
                         placeholder={'Type message here...'}
                         onChangeText={newText => setCurrentTyping(newText)}
+                        ref={textInput}
+                        onSubmitEditing={() => setMessages(submitMessage())}
                     />
 
                     <View style={{marginRight: 4}}/>
@@ -128,11 +206,12 @@ export default function Chat() {
                     {
                         alignItems: 'center',
                     }]}
-                    
                         onPress={() => 
                             {
-                                submitMessage(currentTyping)
-                                this.textInput.clear()
+                                if (currentTyping != undefined)
+                                {
+                                    setMessages(submitMessage())
+                                }
                             }}
                     >
                         <Text style={[
