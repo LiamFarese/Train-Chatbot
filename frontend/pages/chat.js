@@ -3,15 +3,18 @@ import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
 import { useRef, useState } from "react";
+import Help from "./help";
 
 export default function Chat() {
 
+    const colors = useTheme().colors;
 
     // States //
 
-    const colors = useTheme().colors;
     const [youAreLastSender, setYouAreLastSender] = useState(true)
     const [currentTyping, setCurrentTyping] = useState("")
+    const [currentModal, setCurrentModal] = useState(null);
+
     // alternates between 'owner' and 'you', owner being first
     const [messages, setMessages] = useState([
 
@@ -25,7 +28,7 @@ export default function Chat() {
             "not really...",
         ],
     ]);
-
+    
 
     // References //
 
@@ -91,6 +94,13 @@ export default function Chat() {
         }}>
             <StatusBar/>
 
+            {/* Modals */}
+
+            <Help 
+                visible={currentModal == 'Help'}
+                onClose={() => {setCurrentModal(null)}}
+            />
+
 
             {/* Top Header */}
 
@@ -115,6 +125,9 @@ export default function Chat() {
                         Train Chatbot
                     </Text>
 
+
+                    {/* About Button */}
+
                     <Pressable style={[
 
                         styles(colors).container,
@@ -122,11 +135,18 @@ export default function Chat() {
                         alignItems: 'center',
                     }]}
                     >
-                        <Text style={[styles(colors).text,]}>About</Text>
+                        <Text 
+                            style={[styles(colors).text,]
+                        }>
+                            About
 
+                        </Text>
                     </Pressable>
 
                     <View style={{marginRight: 4}}/>
+                    
+
+                    {/* Help Button */}
 
                     <Pressable style={[
 
@@ -141,7 +161,9 @@ export default function Chat() {
                             styles(colors).text,
                         {
                             color: colors.card
-                        }]}>
+                        }]}
+                            onPress={() => setCurrentModal('Help')}
+                        >
                             Help
 
                         </Text>

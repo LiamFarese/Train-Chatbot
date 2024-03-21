@@ -1,5 +1,4 @@
 import {StyleSheet} from 'react-native';
-import { useTheme } from '@react-navigation/native';
 
 export default styles = (colors) => StyleSheet.create({
 
@@ -17,7 +16,7 @@ export default styles = (colors) => StyleSheet.create({
 
     text: {
 
-        fontSize: 18,
+        fontSize: 20,
         color: colors.text,
     },
 
@@ -57,6 +56,23 @@ export default styles = (colors) => StyleSheet.create({
 
         maxWidth: 720,
         alignSelf: 'center',
-        width: '100%'
-    }
+        width: '100%',
+    },
+
+    modal: {
+
+        backgroundColor: colors.card,
+        borderRadius: 32,
+        shadowColor: colors.border,
+        shadowRadius: 32,
+    },
+
+    scrollViewContainer: {
+
+        backgroundColor: colors.background,
+        borderRadius: 32,
+        paddingLeft: 16,
+        paddingRight: 16,
+        flex: 1,
+    },
 })
