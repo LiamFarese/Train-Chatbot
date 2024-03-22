@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, TextInput, Pressable, StatusBar } from "react-native";
+import { View, Text, ScrollView, FlatList, TextInput, Pressable, StatusBar } from "react-native";
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
 import { useRef, useState } from "react";
 import Help from "./help";
+import Button from "../components/button";
 
 export default function Chat() {
 
@@ -12,7 +13,7 @@ export default function Chat() {
     // States //
 
     const [youAreLastSender, setYouAreLastSender] = useState(true)
-    const [currentTyping, setCurrentTyping] = useState("")
+    const [currentTyping, setCurrentTyping] = useState(null)
     const [currentModal, setCurrentModal] = useState(null);
 
     // alternates between 'owner' and 'you', owner being first
@@ -27,12 +28,28 @@ export default function Chat() {
             "not really mate",
             "not really...",
         ],
+
+        [
+            "goblin",
+            "goblin",
+            "goblin",
+            "goblin",
+            "goblin",
+            "goblin",
+            "goblin",
+            "goblin",
+        ],
+
+        [
+            "what's wrong with you?!"
+        ],
     ]);
     
 
     // References //
 
-    textInput = useRef()
+    const textInput = useRef()
+    const scrollView = useRef()
 
 
     // Functions //
@@ -62,13 +79,16 @@ export default function Chat() {
         return messageBlocks
     }
 
+    // for submitting the message to the chatbot
+    // edit when this functionality has been added
     function submitMessage() {
 
-        if (currentTyping == undefined) return
-        if (currentTyping == '') return
+        // close function if message is invalid
+        if (currentTyping == null || currentTyping == ''
+            || currentTyping == undefined) return
 
         textInput.current.clear()
-        textInput.current.blur()
+        textInput.current.focus()
 
         newMessages = [...messages]
 
@@ -81,6 +101,10 @@ export default function Chat() {
             newMessages.push([message])
             setYouAreLastSender(true)
         }
+
+        // add code here //
+
+        setCurrentTyping(null)
 
         return newMessages
     }
@@ -96,7 +120,7 @@ export default function Chat() {
 
             {/* Modals */}
 
-            <Help 
+            <Help
                 visible={currentModal == 'Help'}
                 onClose={() => {setCurrentModal(null)}}
             />
@@ -128,125 +152,80 @@ export default function Chat() {
 
                     {/* About Button */}
 
-                    <Pressable style={[
+                    <Button
 
-                        styles(colors).container,
-                    {
-                        alignItems: 'center',
-                    }]}
+                        onPress={() => setCurrentModal('Help')}
                     >
-                        <Text 
-                            style={[styles(colors).text,]
-                        }>
-                            About
+                        Help
 
-                        </Text>
-                    </Pressable>
-
-                    <View style={{marginRight: 4}}/>
-                    
-
-                    {/* Help Button */}
-
-                    <Pressable style={[
-
-                        styles(colors).container,
-                        styles(colors).primary,
-                    {
-                        alignItems: 'center',
-                    }]}
-                    >
-                        <Text style={[
-
-                            styles(colors).text,
-                        {
-                            color: colors.card
-                        }]}
-                            onPress={() => setCurrentModal('Help')}
-                        >
-                            Help
-
-                        </Text>
-                    </Pressable>
+                    </Button>
                 </View>
             </View>
 
             
             {/* Messages */}
 
-            <View style={{
+            <ScrollView contentContainerStyle={[
+                
+                styles(colors).maxWidth,
+            {
+                padding: 8,
+                paddingBottom: 32,
+                justifyContent: 'flex-end',
+            }]}
+                ref={ref => {this.scrollView = ref}}
+                onContentSizeChange={() => this.scrollView.scrollToEnd()}
+            >
+                {getMessageBlocks(messages)}
 
-                flex: 1,
-            }}>
-                <ScrollView contentContainerStyle={[
-                    
-                    styles(colors).maxWidth,
-                {
-                    flex: 1,
-                    padding: 8,
-                    justifyContent: 'flex-end',
-                }]}>
-                    {getMessageBlocks(messages)}
+            </ScrollView>
 
-                </ScrollView>
-            </View>
+            <View style={{paddingBottom: 32,}}/>
             
 
             {/* Footer (text box and send button) */}
 
             <View style={[
-
-                styles(colors).footer,
+                
+                styles(colors).headerFooterInner,
+                styles(colors).maxWidth,
             {
-                marginTop: 16,
+                position: 'absolute',
+                bottom: 0,
+                padding: 8,
             }]}>
-                <View style={[
-                    
-                    styles(colors).headerFooterInner,
-                    styles(colors).maxWidth,
-                ]}>
-                    <TextInput style={[
+                <TextInput style={[
 
-                        styles(colors).container,
+                    styles(colors).container,
+                    styles(colors).text,
+                {
+                    alignItems: 'center',
+                    flex: 1,
+                }]}
+                    ref={textInput}
+                    placeholder={'Type message here...'}
+                    onChangeText={newText => setCurrentTyping(newText)}
+                    onTouchStart={() => this.scrollView.scrollToEnd() }
+                    onSubmitEditing={() => setMessages(submitMessage())}
+                />
+
+                <View style={{marginRight: 2,}} />
+
+                <Button 
+
+                    primary={true}
+                    onPress={() => setMessages(submitMessage())}
+                >
+                    <Text style={[
+
                         styles(colors).text,
                     {
-                        alignItems: 'center',
-                        flex: 1,
-                    }]}
-                        placeholder={'Type message here...'}
-                        onChangeText={newText => setCurrentTyping(newText)}
-                        ref={textInput}
-                        onSubmitEditing={() => setMessages(submitMessage())}
-                    />
+                        color: colors.card
+                    }]}>
+                        Send
 
-                    <View style={{marginRight: 4}}/>
-
-                    <Pressable style={[
-
-                        styles(colors).container,
-                        styles(colors).primary,
-                    {
-                        alignItems: 'center',
-                    }]}
-                        onPress={() => 
-                            {
-                                if (currentTyping != undefined)
-                                {
-                                    setMessages(submitMessage())
-                                }
-                            }}
-                    >
-                        <Text style={[
-
-                            styles(colors).text,
-                        {
-                            color: colors.card
-                        }]}>
-                            Send
-
-                        </Text>
-                    </Pressable>
-                </View>
+                    </Text>
+                </Button>
             </View>
         </View>
     )

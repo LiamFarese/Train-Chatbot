@@ -1,7 +1,8 @@
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import styles from "../styles";
 import { useTheme } from "@react-navigation/native";
-import helpText from "./helpText";
+import HelpText from "./helpText";
+import Button from "../components/button";
 
 
 /*
@@ -21,30 +22,18 @@ export default function Help(props) {
             transparent={true}
             visible={props.visible}
             animationType={"fade"}
-
-            style={{
-
-            }}
         >
             <View style={{
 
                 flex: 1,
                 backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                padding: 16,
             }}>
 
-                <Pressable style={{
+                <View style={[{
 
-                    height: 72,
-                }}
-                    onPress={props.onClose}
-                />
-
-                <View
-
-                    style={[{
-
-                        flex: 1,
-                        padding: 16,
+                    flex: 1,
+                    padding: 16,
                 },
                     styles(colors).maxWidth,
                     styles(colors).modal,
@@ -52,26 +41,44 @@ export default function Help(props) {
                 >
                     {/* Header */}
 
-                    <View
+                    <Text style={[
 
-                        style={{
+                        styles(colors).text,
+                        styles(colors).title,
+                    {
+                        padding: 8,
+                    }]}>
+                        Help
+                    
+                    </Text>
+                    
+                    {/* Main Text */}
+                    <View style={styles(colors).scrollViewContainer}>
+                        <ScrollView>
+                            <Text style={styles(colors).text}><HelpText/></Text>
+                        </ScrollView>
+                    </View>
+                    
+                    <View style={{
 
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            paddingBottom: 12,
-                        }}
-                    >
-                        <Text style={[
+                        paddingTop: 8,
+                        alignItems: 'center',
+                    }}>
+                        <Button 
 
-                            styles(colors).text,
-                            styles(colors).title,
-                        {
-                            paddingTop: 8,
-                        }]}>
-                            Help
-                        
-                        </Text>
-                        
+                            onPress={props.onClose}
+                        >
+                            Close
+                        </Button>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    )
+}
+
+/*
+
                         <Pressable style={[
 
                             styles(colors).container,
@@ -83,16 +90,4 @@ export default function Help(props) {
                             <Text style={styles(colors).text}>Close</Text>
 
                         </Pressable>
-                    </View>
-                    
-                    {/* Main Text */}
-                    <View style={styles(colors).scrollViewContainer}>
-                        <ScrollView>
-                            <Text style={styles(colors).text}>{helpText}</Text>
-                        </ScrollView>
-                    </View>
-                </View>
-            </View>
-        </Modal>
-    )
-}
+*/

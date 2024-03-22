@@ -1,9 +1,31 @@
+import { Linking, Pressable, Text } from "react-native"
 
-export default `
+export default function HelpText(props) {
 
-Hello!
-    
-I am the help page, at your service! Currently there's not anything to say...
+    return (
 
-you're just gonna have to fill me up with beautiful text later (I hope that doesn't sound weird...). Good luck!
-`
+        <Text style={props.style}>
+        {'\n'}
+            Hello!{'\n'}
+        {'\n'}
+            I am the <Text style={{fontWeight:'bold'}}>help page!</Text>{'\n'}
+        {'\n'}
+            Not a lot is going on here right now... fill me with text later when you're ready.{'\n'}
+        {'\n'}
+            In the meantime... here's a
+        {' '}
+            
+            <Pressable onPress={
+
+                async () => {await Linking.openURL('https://youtu.be/B3jjFzRIMks?si=HQOZT2L6cjLlbuyo')
+            }}>
+                <Text style={[ props.style, {color: '#00f'}]}>
+                    
+                    funny video
+                    
+                </Text>
+            </Pressable>
+
+        </Text>
+    )
+}

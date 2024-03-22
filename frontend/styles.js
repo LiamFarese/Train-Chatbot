@@ -1,10 +1,10 @@
 import {StyleSheet} from 'react-native';
 
-export default styles = (colors) => StyleSheet.create({
+export default styles = (colors, pressed = false) => StyleSheet.create({
 
     container: {
 
-        backgroundColor: colors.card,
+        backgroundColor: pressed ? colors.borderColor : colors.card,
         borderColor: colors.border,
         borderRadius: 26,
         borderWidth: 2,
@@ -44,6 +44,8 @@ export default styles = (colors) => StyleSheet.create({
         backgroundColor: colors.card,
         padding: 8,
         alignContent: 'center',
+        borderBottomWidth: 2,
+        borderColor: colors.border,
     },
 
     headerFooterInner: {
@@ -63,8 +65,7 @@ export default styles = (colors) => StyleSheet.create({
 
         backgroundColor: colors.card,
         borderRadius: 32,
-        shadowColor: colors.border,
-        shadowRadius: 32,
+        margin: 16,
     },
 
     scrollViewContainer: {
