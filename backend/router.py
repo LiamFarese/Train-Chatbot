@@ -20,9 +20,8 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-    
 class SessionBody(BaseModel):
-    session_id: str
+    session_ID: str
     chat_hist: list
     timestamp: str
     user_ID: str
@@ -83,12 +82,11 @@ def startSession(user_ID: str):
     
     #* Establish a new SessionBody object
     session_data = SessionBody(
-        session_id=session_ID,
+        session_ID=session_ID,
         chat_hist=[],
         timestamp=datetime.now().isoformat(),
         user_ID=user_ID,
-        session_active=True,
-        session_variables={}
+        session_active=True
     )
     
     #* Add newly created session data to database
