@@ -1,10 +1,13 @@
-from fastapi import FastAPI, HTTPException, status, Path
+from fastapi import FastAPI, HTTPException, status, Path, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
+import uuid
+import json
 
 app = FastAPI()
 
+#* temporary db
 sessions = {}
 
 origins = [
@@ -35,13 +38,34 @@ def generateResponse(user_message: str):
     #TODO: Add response generation logic
     pass
 
-@app.post("/send-chat/")
+@app.get("/user/ID")
+def getUserID(request: Request):
+    #* Check if user ID cookie exists
+    user_ID = request.cookies.get("user_ID")
+    if user_ID:
+        return {"user_ID": user_ID}
+    else:
+        #* Generate new unique user ID
+        new_ID = str(uuid.uuid4())
+        
+        #* Return the new user ID and set it as a cookie
+        response = Response(json.dumps({"user_ID": new_ID}))
+        response.set_cookie("user_ID", value=new_ID, max_age=3600, httponly=True)
+        return response
+
+
+@app.post("/user/send-chat/")
 def chat(session_ID: str, user_message: str):
     
     #* Check if session exsists
     if session_ID not in sessions:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
     
+    session = sessions[session_ID]
+    
+    if not session.session_active:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
+        
     #* Get the session from database
     session = sessions[session_ID]
     
