@@ -13,6 +13,7 @@ from sklearn.neighbors import KNeighborsRegressor
 # constants #
 
 historical_data_path = 'historical-data'
+historical_table_path = f'{historical_data_path}/historical_table.csv'
 
 
 # functions #
@@ -38,54 +39,83 @@ def get_historical_data(year, month):
     return data
 
 
-def get_full_historical_dataset():
+# for extracting times from a string of the format 00:00 or 00:00:00 to seconds
+def extract_time_to_seconds(time_string):
 
-    #data = get_historical_data(2022, 1)
+    # if 00:00 format
+    if len(time_string) == 5:
 
-    # data.loc[
-    #     (data['pta'].notnull())
-    #     & (data['arr_at'].notnull())
-    #     & (len(data['pta']) < 10),
-    #     ['pta', 'arr_at']]
+        return (
+                # extract hours
+                int(time_string[0:2]) * 3600
+                # extract minutes
+                + int(time_string[3:5]) * 60)
+
+    # if 00:00:00 format
+    elif  len(time_string) == 6:
+
+        return (
+                # extract hours
+                int(time_string[0:2]) * 3600
+                # extract minutes
+                + int(time_string[3:5]) * 60
+                # extract seconds
+                + int(time_string[6:8]))
+
+    return None
+
+
+def get_full_historical_dataset(print_progress=False):
 
     data = pd.DataFrame(columns=['month', 'delay'])
 
-    historical = get_historical_data(2022, 1)
+    for month in range(1, 13):
 
-    hist_filtered = (
+        if print_progress:
 
-        historical.loc)[
-
-            (historical['pta'].notnull())
-            & (historical['arr_at'].notnull())
-        ]
+            print(f"Processing month: {month}...")
 
 
-    for index, row in hist_filtered.iterrows():
+        historical = get_historical_data(2022, month)
 
-        # check time can be extracted
-        if len(row['pta']) != 5 or len(row['arr_at']) != 5:
+        # filtered out where needed columns are not empty
+        hist_filtered = (
 
-            break
+            historical.loc)[
 
-        # extract delay
-        delay = (
+                (historical['pta'].notnull())
+                & (historical['arr_at'].notnull())
+            ]
 
-            # extract hours from pta
-            (int(row['arr_at'][0:2]) * 3600
-                # extract minutes from pta
-                + int(row['arr_at'][3:5]) * 60)
-            -
-            # extract hours from arr_at
-            (int(row['pta'][0:2]) * 3600
-                # extract minutes from arr_at
-                + int(row['pta'][3:5]) * 60)
-        )
+        previous_row = None
 
-        # if the delay is over 0, there has been delay
-        new_row = {'month': index, 'delay': delay > 0}
+        for index, row in hist_filtered.iterrows():
 
-        data = data._append(new_row, ignore_index=True)
+            if previous_row is None:
+
+                previous_row = row
+                pass
+
+
+            # extract times to values
+            arr_at = extract_time_to_seconds(row['arr_at'])
+            pta = extract_time_to_seconds(row['pta'])
+
+            # if the format is incorrect, one of these will be None
+            if arr_at is None or pta is None:
+
+                pass
+
+
+            # extract delay, if negative just set to 0
+            delay = max(arr_at - pta, 0)
+
+            # if the delay is over 0, there has been delay
+            new_row = {'month': month, 'delay': delay}
+
+            data = data._append(new_row, ignore_index=True)
+
+            previous_row = row
 
 
     return data
@@ -95,12 +125,36 @@ def get_full_historical_dataset():
 
 def main():
 
-    model = KNeighborsRegressor(n_neighbors=5)
+    data = None
+    option = 1
 
-    data = get_full_historical_dataset()
+    while option > 0:
 
-    print(data)
-    print(data.loc[data['delay']])
+        option = int(input(
+            "Select an option:\n"
+            "0. Exit\n"
+            "[1]. Full\n"
+            "2. Extract table\n"
+            "3. Train model\n"
+            "Your Answer: "))
+
+        if option == 1 or option == 2:
+
+            data = get_full_historical_dataset(True)
+            data.to_csv(historical_table_path)
+            print("table saved!\n")
+
+
+        if option == 1 or option == 3:
+
+            if data is None:
+
+                data = pd.read_csv(historical_table_path)
+
+
+            plot = data.plot()
+            fig = plot.get_figure()
+            fig.savefig("historical_data_plot.png")
 
 
 main()
