@@ -65,57 +65,86 @@ def extract_time_to_seconds(time_string):
     return None
 
 
+# extracts the day from the historical data
+def extract_day_from_rid(rid_string):
+
+    return int(rid_string[6:8])
+
+
 def get_full_historical_dataset(print_progress=False):
 
-    data = pd.DataFrame(columns=['month', 'delay'])
+    data = pd.DataFrame(columns=['month', 'day', 'day_of_week', 'duration', 'delay'])
 
-    for month in range(1, 13):
+    for year in range(2017, 2023):
 
-        if print_progress:
+        print(f"Processing year: {year}...")
 
-            print(f"Processing month: {month}...")
+        for month in range(1, 13):
+
+            if print_progress:
+
+                print(f"\tProcessing month: {month}...")
 
 
-        historical = get_historical_data(2022, month)
+            historical = get_historical_data(year, month)
 
-        # filtered out where needed columns are not empty
-        hist_filtered = (
+            # filtered out where needed columns are not empty
+            hist_filtered = (
 
-            historical.loc)[
+                historical.loc)[
 
-                (historical['pta'].notnull())
-                & (historical['arr_at'].notnull())
-            ]
+                    (historical['pta'].notnull())
+                    & (historical['ptd'].notnull())
+                    & (historical['arr_at'].notnull())
+                    & (historical['rid'].notnull())
+                ]
 
-        previous_row = None
+            previous_row = None
 
-        for index, row in hist_filtered.iterrows():
+            for index, row in hist_filtered.iterrows():
 
-            if previous_row is None:
+                if previous_row is None:
+
+                    previous_row = row
+                    continue
+
+
+                # extract times to values
+                arr_at = extract_time_to_seconds(row['arr_at'])
+                pta = extract_time_to_seconds(row['pta'])
+
+                # if the format is incorrect, one of these will be None
+                if arr_at is None or pta is None:
+
+                    continue
+
+
+                # planned duration = departure of previous vs arrival of current
+                duration = pta - extract_time_to_seconds(previous_row['ptd'])
+
+                # if the duration is below 0, do not put in the graph
+                if duration <= 0:
+
+                    continue
+
+
+                # extract delay, if negative just set to 0
+                delay = max(arr_at - pta, 0)
+                day = extract_day_from_rid(str(row['rid']))
+
+                # get the remainder of day / 7 and add 1 to get the day of the week
+                day_of_the_week = day % 7 + 1
+
+                # if the delay is over 0, there has been delay
+                new_row = {'month':         month,
+                           'day_of_week':   day_of_the_week,
+                           'day':           day,
+                           'duration':      duration,
+                           'delay':         delay}
+
+                data = data._append(new_row, ignore_index=True)
 
                 previous_row = row
-                pass
-
-
-            # extract times to values
-            arr_at = extract_time_to_seconds(row['arr_at'])
-            pta = extract_time_to_seconds(row['pta'])
-
-            # if the format is incorrect, one of these will be None
-            if arr_at is None or pta is None:
-
-                pass
-
-
-            # extract delay, if negative just set to 0
-            delay = max(arr_at - pta, 0)
-
-            # if the delay is over 0, there has been delay
-            new_row = {'month': month, 'delay': delay}
-
-            data = data._append(new_row, ignore_index=True)
-
-            previous_row = row
 
 
     return data
@@ -136,6 +165,7 @@ def main():
             "[1]. Full\n"
             "2. Extract table\n"
             "3. Train model\n"
+            "9. Extract Graph\n"
             "Your Answer: "))
 
         if option == 1 or option == 2:
@@ -145,16 +175,20 @@ def main():
             print("table saved!\n")
 
 
-        if option == 1 or option == 3:
+        # all options after 2 require the table to be loaded
+        if option == 1 or option > 2:
 
             if data is None:
 
                 data = pd.read_csv(historical_table_path)
 
 
-            plot = data.plot()
-            fig = plot.get_figure()
-            fig.savefig("historical_data_plot.png")
+        if option == 1 or option == 9:
+
+            print(len(data.loc[data['duration'] <= 120]))
+
+            plt.plot(data['duration'], data['delay'], 'o')
+            plt.show()
 
 
 main()
