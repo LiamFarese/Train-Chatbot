@@ -3,11 +3,15 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split
 
 import pandas as pd
 from pandas.core.interchange import dataframe
 
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import balanced_accuracy_score
 
 
 # constants #
@@ -71,9 +75,11 @@ def extract_day_from_rid(rid_string):
     return int(rid_string[6:8])
 
 
+# extract and save the full dataset from the historical data
+# into a table with columns month, day, day_of_week, duration, delay
 def get_full_historical_dataset(print_progress=False):
 
-    data = pd.DataFrame(columns=['month', 'day', 'day_of_week', 'duration', 'delay'])
+    data = pd.DataFrame(columns=['delay', 'month', 'day', 'duration'])
 
     for year in range(2017, 2023):
 
@@ -91,66 +97,86 @@ def get_full_historical_dataset(print_progress=False):
             # filtered out where needed columns are not empty
             hist_filtered = (
 
-                historical.loc)[
+                historical)[
 
                     (historical['pta'].notnull())
-                    & (historical['ptd'].notnull())
                     & (historical['arr_at'].notnull())
-                    & (historical['rid'].notnull())
+                    & (historical['ptd'].notnull())
                 ]
 
-            previous_row = None
+            first_station_departure = None
 
             for index, row in hist_filtered.iterrows():
 
-                if previous_row is None:
 
-                    previous_row = row
+                if first_station_departure is None:
+
+                    first_station_departure = extract_time_to_seconds(row['ptd'])
                     continue
 
 
                 # extract times to values
-                arr_at = extract_time_to_seconds(row['arr_at'])
-                pta = extract_time_to_seconds(row['pta'])
-
-                # if the format is incorrect, one of these will be None
-                if arr_at is None or pta is None:
-
-                    continue
+                arr_at = extract_time_to_seconds(str(row['arr_at']))
+                pta = extract_time_to_seconds(str(row['pta']))
 
 
-                # planned duration = departure of previous vs arrival of current
-                duration = pta - extract_time_to_seconds(previous_row['ptd'])
+                # planned duration = arrival of current - departure of previous
+                duration = pta - first_station_departure
 
                 # if the duration is below 0, do not put in the graph
                 if duration <= 0:
 
+                    first_station_departure = extract_time_to_seconds(row['ptd'])
                     continue
 
 
                 # extract delay, if negative just set to 0
                 delay = max(arr_at - pta, 0)
+
+                # do not append if there is no delay
+                if delay == 0:
+
+                    continue
+
+
                 day = extract_day_from_rid(str(row['rid']))
 
-                # get the remainder of day / 7 and add 1 to get the day of the week
-                day_of_the_week = day % 7 + 1
-
                 # if the delay is over 0, there has been delay
-                new_row = {'month':         month,
-                           'day_of_week':   day_of_the_week,
-                           'day':           day,
-                           'duration':      duration,
-                           'delay':         delay}
+                new_row = {
+
+                    'delay':    delay,
+                    'month':    month,
+                    'day':      day,
+                    'duration': duration}
+
 
                 data = data._append(new_row, ignore_index=True)
-
-                previous_row = row
 
 
     return data
 
 
-# main #
+def train_model(data, model):
+
+    d = data.loc[data['delay'] < 20000]
+
+    X = d[data.columns.drop('delay')]
+    y = d['delay']
+
+    seed = 91
+    test_size = 0.1
+
+    X_train, X_test, y_train, y_test = train_test_split(
+       X, y, test_size=test_size, random_state=seed)
+
+    model.fit(X_train, y_train)
+    y_predict = model.predict(X_test)
+
+    plt.scatter(X_train['month'], y_train, color='black', label='training data')
+    plt.plot(X_test, y_predict, color= 'b', label = 'Linear Regression')
+    plt.show()
+
+    # main #
 
 def main():
 
@@ -162,13 +188,17 @@ def main():
         option = int(input(
             "Select an option:\n"
             "0. Exit\n"
-            "[1]. Full\n"
+            "1. Full\n"
             "2. Extract table\n"
             "3. Train model\n"
             "9. Extract Graph\n"
             "Your Answer: "))
 
-        if option == 1 or option == 2:
+
+        full = option == 1
+
+
+        if full or option == 2:
 
             data = get_full_historical_dataset(True)
             data.to_csv(historical_table_path)
@@ -176,16 +206,23 @@ def main():
 
 
         # all options after 2 require the table to be loaded
-        if option == 1 or option > 2:
+        if full or option > 2:
 
             if data is None:
 
-                data = pd.read_csv(historical_table_path)
+                data = pd.read_csv(historical_table_path, index_col=0)
+
+
+        if full or option == 3:
+
+            model1 = KNeighborsRegressor()
+
+            train_model(data, model1)
 
 
         if option == 1 or option == 9:
 
-            print(len(data.loc[data['duration'] <= 120]))
+            print(len(data))
 
             plt.plot(data['duration'], data['delay'], 'o')
             plt.show()
