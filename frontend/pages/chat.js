@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, FlatList, TextInput, Pressable, StatusBar } from "react-native";
+import axios from 'axios';
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
@@ -12,37 +13,37 @@ export default function Chat() {
 
     // States //
 
-    const [youAreLastSender, setYouAreLastSender] = useState(true)
+    // const [youAreLastSender, setYouAreLastSender] = useState(false)
     const [currentTyping, setCurrentTyping] = useState(null)
     const [currentModal, setCurrentModal] = useState(null);
 
     // alternates between 'owner' and 'you', owner being first
     const [messages, setMessages] = useState([
 
-        [
-            "Hello, la la la la la la la la la la la la la I am a very long message!",
-            "do you even care?",
-        ],
+        // [
+        //     "Hello, la la la la la la la la la la la la la I am a very long message!",
+        //     "do you even care?",
+        // ],
 
-        [
-            "not really mate",
-            "not really...",
-        ],
+        // [
+        //     "not really mate",
+        //     "not really...",
+        // ],
 
-        [
-            "goblin",
-            "goblin",
-            "goblin",
-            "goblin",
-            "goblin",
-            "goblin",
-            "goblin",
-            "goblin",
-        ],
+        // [
+        //     "goblin",
+        //     "goblin",
+        //     "goblin",
+        //     "goblin",
+        //     "goblin",
+        //     "goblin",
+        //     "goblin",
+        //     "goblin",
+        // ],
 
-        [
-            "what's wrong with you?!"
-        ],
+        // [
+        //     "what's wrong with you?!"
+        // ],
     ]);
     
 
@@ -58,7 +59,7 @@ export default function Chat() {
     {
         messageBlocks = []
         key = 0
-        you = false;
+        you = true;
 
         messages.forEach((message) => {
     
@@ -81,7 +82,7 @@ export default function Chat() {
 
     // for submitting the message to the chatbot
     // edit when this functionality has been added
-    function submitMessage() {
+    const submitMessage = async () => {
 
         // close function if message is invalid
         if (currentTyping == null || currentTyping == ''
@@ -92,21 +93,22 @@ export default function Chat() {
 
         newMessages = [...messages]
 
-        if (youAreLastSender) {
-
-            newMessages[newMessages.length - 1].push(currentTyping)
-        }
-        else {
-        
-            newMessages.push([message])
-            setYouAreLastSender(true)
-        }
+        newMessages.push([currentTyping])
+        setMessages(newMessages)
 
         // add code here //
-
+        try {
+            const response = await axios.post('http://localhost:8000/user/send-chat/', {
+              currentTyping,
+            });
+            console.log(response)
+            newMessages.push([response.data.message])
+            setMessages(newMessages)
+        } catch (error) {
+            console.error('Error sending message:', error);
+        };
         setCurrentTyping(null)
 
-        return newMessages
     }
 
     return (
@@ -206,7 +208,7 @@ export default function Chat() {
                     placeholder={'Type message here...'}
                     onChangeText={newText => setCurrentTyping(newText)}
                     onTouchStart={() => this.scrollView.scrollToEnd() }
-                    onSubmitEditing={() => setMessages(submitMessage())}
+                    onSubmitEditing={() => submitMessage()}
                 />
 
                 <View style={{marginRight: 2,}} />
@@ -214,7 +216,7 @@ export default function Chat() {
                 <Button 
 
                     primary={true}
-                    onPress={() => setMessages(submitMessage())}
+                    onPress={() => submitMessage()}
                 >
                     <Text style={[
 

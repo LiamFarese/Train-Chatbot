@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException, status, Path, Request, Response
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
@@ -55,29 +57,29 @@ def getUserID(request: Request):
 
 
 @app.post("/user/send-chat/")
-def chat(session_ID: str, user_message: str):
+def chat():
     
-    #* Check if session exsists
-    if session_ID not in sessions:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
+    # #* Check if session exsists
+    # if session_ID not in sessions:
+    #     raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
     
-    session = sessions[session_ID]
+    # #* Get the session from database
+    # session = sessions[session_ID]
     
-    if not session.session_active:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
+    # if not session.session_active:
+    #     raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
         
-    #* Get the session from database
-    session = sessions[session_ID]
+    # #* Append user's message to chat history
+    # session.chat_hist.append({"user": True, "message": user_message, "timestamp": datetime.now().isoformat()})
     
-    #* Append user's message to chat history
-    session.chat_hist.append({"user": True, "message": user_message, "timestamp": datetime.now().isoformat()})
-    
-    #* Update the session's timestamp
-    session.timestamp = datetime.now().isoformat()
-    
-    return {"message": "Message recieved and processed successfully"}
+    # #* Update the session's timestamp
+    # session.timestamp = datetime.now().isoformat()
+    # json_compatible_item_data = jsonable_encoder(message)
 
-@app.get("/session")
+    return {"message" : "Message recieved and processed successfully"}
+
+
+@app.get("/session") 
 def getSession():
     
     for session_ID in sessions.keys():
