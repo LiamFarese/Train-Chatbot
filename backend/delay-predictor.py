@@ -3,15 +3,17 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.model_selection import train_test_split
 
 import pandas as pd
 from pandas.core.interchange import dataframe
 
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, BayesianRidge
 from sklearn.metrics import balanced_accuracy_score
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split
+
+import datetime as dt
 
 
 # constants #
@@ -70,18 +72,22 @@ def extract_time_to_seconds(time_string):
 
 
 # extracts the day from the historical data
-def extract_day_from_rid(rid_string):
+def extract_date_from_rid(rid_string):
 
-    return int(rid_string[6:8])
+    year = int(rid_string[0:4])
+    month = int(rid_string[4:6])
+    day = int(rid_string[6:8])
+
+    return year, month, day
 
 
 # extract and save the full dataset from the historical data
 # into a table with columns month, day, day_of_week, duration, delay
 def get_full_historical_dataset(print_progress=False):
 
-    data = pd.DataFrame(columns=['delay', 'month', 'day', 'duration'])
+    data = pd.DataFrame(columns=['delay', 'day', 'duration'])
 
-    for year in range(2017, 2023):
+    for year in range(2022, 2023):
 
         print(f"Processing year: {year}...")
 
@@ -134,18 +140,26 @@ def get_full_historical_dataset(print_progress=False):
                 delay = max(arr_at - pta, 0)
 
                 # do not append if there is no delay
-                if delay == 0:
+                if delay == 0 or delay is None:
 
                     continue
 
 
-                day = extract_day_from_rid(str(row['rid']))
+                y, m, d = extract_date_from_rid(str(row['rid']))
+
+                date = dt.datetime(y, m, d)
+
+                day = int(date.timetuple().tm_yday)
+
+                if day is None:
+
+                    continue
+
 
                 # if the delay is over 0, there has been delay
                 new_row = {
 
                     'delay':    delay,
-                    'month':    month,
                     'day':      day,
                     'duration': duration}
 
@@ -163,6 +177,8 @@ def train_model(data, model):
     X = d[data.columns.drop('delay')]
     y = d['delay']
 
+    print(X)
+
     seed = 91
     test_size = 0.1
 
@@ -172,11 +188,12 @@ def train_model(data, model):
     model.fit(X_train, y_train)
     y_predict = model.predict(X_test)
 
-    plt.scatter(X_train['month'], y_train, color='black', label='training data')
-    plt.plot(X_test, y_predict, color= 'b', label = 'Linear Regression')
+    plt.scatter(X_train['duration'], y_train, color='black', label='training data')
+    plt.plot(X_test['duration'], y_predict, color='b', label='Linear Regression')
     plt.show()
 
-    # main #
+
+# main #
 
 def main():
 
@@ -215,16 +232,27 @@ def main():
 
         if full or option == 3:
 
-            model1 = KNeighborsRegressor()
+            model = BayesianRidge()
 
-            train_model(data, model1)
+            train_model(data, model)
 
 
         if option == 1 or option == 9:
 
-            print(len(data))
+            num_of_points = 12
+            divisor = 356 / num_of_points
+            averages = []
 
-            plt.plot(data['duration'], data['delay'], 'o')
+            for i in range(0, num_of_points):
+
+                r = data.loc[
+                    (data['day'] < (i + 1) * divisor)
+                    & (data['day'] > i * divisor)]['delay']
+
+                averages.append(r.mean())
+
+
+            plt.plot(range(0, num_of_points), averages, 'o')
             plt.show()
 
 
