@@ -1,11 +1,18 @@
-from fastapi import FastAPI, HTTPException, status, Path, Request, Response
+from fastapi import FastAPI, HTTPException, status, Path, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
+
+from typing import List, Annotated
 from pydantic import BaseModel
 from datetime import datetime
 import uuid
 import json
 
+from database import engine, SessionLocal
+from sqlalchemy.orm import Session
+import models
+
 app = FastAPI()
+models.Base.metadata.create_all(bind=engine)
 
 #* temporary db
 sessions = {}
@@ -29,6 +36,15 @@ class SessionBody(BaseModel):
     timestamp: str
     user_ID: str
     session_active: bool
+
+def getDb():
+    db = SessionLocal
+    try:
+        yield db
+    finally:
+        db.close()
+
+db_dependency = Annotated[Session, Depends(getDb)]
 
 def saveResponse(response: str):
     #TODO: Add logic to save response to db
@@ -99,7 +115,7 @@ def getSession(session_ID: str):
     return {"message": "Session found", "data": sessions[session_ID]}
 
 @app.post("/session/start/")
-def startSession(user_ID: str):
+def startSession(user_ID: str, db: db_dependency):
     
     #* Generate unique session ID
     session_ID = f"{user_ID}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -114,7 +130,15 @@ def startSession(user_ID: str):
     )
     
     #* Add newly created session data to database
-    sessions[session_ID] = session_data
+    #sessions[session_ID] = session_data
+    db_session = models.Session(session_id=session_data.session_ID, chat_history=session_data.chat_hist, 
+                                timestamp=session_data.timestamp, user_id=session_data.user_ID, 
+                                session_active=session_data.session_active)
+    
+    db.add(db_session)
+    db.commit()
+    db.refresh()
+    
     
     return {"message": "Session started successfully", "session_ID": session_ID}
 
