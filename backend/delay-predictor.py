@@ -67,10 +67,6 @@ def extract_seconds_from_string(time_string):
 # extracts the day from the historical data
 def extract_date_from_rid(rid_string):
 
-    #year = int(rid_string[0:4])
-    #month = int(rid_string[4:6])
-    #day = int(rid_string[6:8])
-
     return dt.datetime.strptime(rid_string[:8], '%Y%m%d')
 
 
@@ -83,7 +79,7 @@ def get_full_historical_dataset(print_progress=False):
         'delay': [],
         'departure_delay': [],
         'day_of_week': [],
-        'day_of_month': [],
+        'day_of_year': [],
         'weekday': [],
         'on_peak': [],
         'hour': [],
@@ -130,6 +126,12 @@ def get_full_historical_dataset(print_progress=False):
                 a_actual = extract_seconds_from_string(row['arr_at'])
                 delay = a_predicted - a_actual
 
+                # if something's gone wrong with the times, skip
+                if delay > 10000 or delay < -10000:
+
+                    continue
+
+
                 # get delay and departure delay
                 d_predicted = extract_seconds_from_string(previous_row['ptd'])
                 d_actual = extract_seconds_from_string(previous_row['dep_at'])
@@ -148,6 +150,8 @@ def get_full_historical_dataset(print_progress=False):
                 day_of_week = date.weekday()
                 weekday = day_of_week == 5 or 6
 
+                day_of_year = date.timetuple().tm_yday
+
                 # get hour and if on peak
                 time = extract_time_from_string(str(row['pta']))
                 on_peak = time.hour >= 9
@@ -157,7 +161,7 @@ def get_full_historical_dataset(print_progress=False):
                 data['departure_delay'] .append(departure_delay)
 
                 data['day_of_week']     .append(day_of_week)
-                data['day_of_month']    .append(day_of_month)
+                data['day_of_year']     .append(day_of_year)
                 data['weekday']         .append(int(weekday))
 
                 data['on_peak']         .append(int(on_peak))
@@ -169,12 +173,8 @@ def get_full_historical_dataset(print_progress=False):
 
 def train_model(data, model):
 
-    d = data.loc[data['delay'] < 20000]
-
-    X = d[data.columns.drop('delay')]
-    y = d['delay']
-
-    print(X)
+    X = data[data.columns.drop('delay')]
+    y = data['delay']
 
     seed = 91
     test_size = 0.2
@@ -185,11 +185,7 @@ def train_model(data, model):
     model.fit(X_train, y_train)
     y_predict = model.predict(X_test)
 
-    print(model.score(X_test, y_test))
-
-    plt.scatter(X_train['day_of_month'], y_train, color='black', label='training data')
-    plt.plot(X_test['day_of_month'], y_predict, color='b', label='Linear Regression')
-    plt.show()
+    return model.score(X_test, y_test)
 
 
 # main #
@@ -230,16 +226,34 @@ def main():
             if data is None:
 
                 data = pd.read_csv(historical_table_path, index_col=0)
+                print(data)
 
 
         if full or option == 3:
 
-            model = KNeighborsRegressor()
+            print('Testing knn')
 
-            train_model(data, model)
+            for i in range(5, 10):
+
+                model = KNeighborsRegressor(n_neighbors=i, n_jobs=-1)
+                score = train_model(data, model)
+
+                print(f'\tn_neighbours={i}, score={score}')
 
 
-        if option == 1 or option == 9:
+            print('Testing Linear')
+            model = LinearRegression()
+            score = train_model(data, model)
+            print(f'\tScore={score}')
+
+
+            print('Testing Bayesian')
+            model = BayesianRidge()
+            score = train_model(data, model)
+            print(f'\tScore={score}')
+
+
+        if option == 9:
 
             averages = []
 
