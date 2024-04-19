@@ -46,48 +46,50 @@ def get_historical_data(year, month):
 
 
 # for extracting times from a string of the format 00:00 or 00:00:00 to seconds
-def extract_time_to_seconds(time_string):
+def extract_time_from_string(time_string):
 
-    # if 00:00 format
-    if len(time_string) == 5:
+    return dt.datetime.strptime(time_string, '%H:%M')
 
-        return (
-                # extract hours
-                int(time_string[0:2]) * 3600
-                # extract minutes
-                + int(time_string[3:5]) * 60)
 
-    # if 00:00:00 format
-    elif  len(time_string) == 6:
+def extract_seconds_from_string(time_string):
 
-        return (
-                # extract hours
-                int(time_string[0:2]) * 3600
-                # extract minutes
-                + int(time_string[3:5]) * 60
-                # extract seconds
-                + int(time_string[6:8]))
+    time = extract_time_from_string(time_string)
 
-    return None
+    total_seconds = 0
+
+    total_seconds += time.hour * 3600
+    total_seconds += time.minute * 60
+
+
+    return total_seconds
 
 
 # extracts the day from the historical data
 def extract_date_from_rid(rid_string):
 
-    year = int(rid_string[0:4])
-    month = int(rid_string[4:6])
-    day = int(rid_string[6:8])
+    #year = int(rid_string[0:4])
+    #month = int(rid_string[4:6])
+    #day = int(rid_string[6:8])
 
-    return year, month, day
+    return dt.datetime.strptime(rid_string[:8], '%Y%m%d')
 
 
 # extract and save the full dataset from the historical data
 # into a table with columns month, day, day_of_week, duration, delay
 def get_full_historical_dataset(print_progress=False):
 
-    data = pd.DataFrame(columns=['delay', 'day', 'duration'])
+    data = {
 
-    for year in range(2022, 2023):
+        'delay': [],
+        'departure_delay': [],
+        'day_of_week': [],
+        'day_of_month': [],
+        'weekday': [],
+        'on_peak': [],
+        'hour': [],
+    }
+
+    for year in range(2017, 2023):
 
         print(f"Processing year: {year}...")
 
@@ -108,66 +110,61 @@ def get_full_historical_dataset(print_progress=False):
                     (historical['pta'].notnull())
                     & (historical['arr_at'].notnull())
                     & (historical['ptd'].notnull())
+                    & (historical['ptd'].notnull())
+                    & (historical['dep_at'].notnull())
                 ]
 
-            first_station_departure = None
+            previous_row = None
+            previous_day_of_month = None
 
             for index, row in hist_filtered.iterrows():
 
+                if previous_row is None:
 
-                if first_station_departure is None:
-
-                    first_station_departure = extract_time_to_seconds(row['ptd'])
+                    previous_row = row
                     continue
 
 
-                # extract times to values
-                arr_at = extract_time_to_seconds(str(row['arr_at']))
-                pta = extract_time_to_seconds(str(row['pta']))
+                # get delay
+                a_predicted = extract_seconds_from_string(row['pta'])
+                a_actual = extract_seconds_from_string(row['arr_at'])
+                delay = a_predicted - a_actual
 
+                # get delay and departure delay
+                d_predicted = extract_seconds_from_string(previous_row['ptd'])
+                d_actual = extract_seconds_from_string(previous_row['dep_at'])
+                departure_delay = d_predicted - d_actual
 
-                # planned duration = arrival of current - departure of previous
-                duration = pta - first_station_departure
+                # get day of week and month and if weekday
+                date = extract_date_from_rid(str(row['rid']))
+                day_of_month = date.day
 
-                # if the duration is below 0, do not put in the graph
-                if duration <= 0:
+                if previous_day_of_month != day_of_month:
 
-                    first_station_departure = extract_time_to_seconds(row['ptd'])
+                    previous_day_of_month = day_of_month
                     continue
 
 
-                # extract delay, if negative just set to 0
-                delay = max(arr_at - pta, 0)
+                day_of_week = date.weekday()
+                weekday = day_of_week == 5 or 6
 
-                # do not append if there is no delay
-                if delay == 0 or delay is None:
-
-                    continue
-
-
-                y, m, d = extract_date_from_rid(str(row['rid']))
-
-                date = dt.datetime(y, m, d)
-
-                day = int(date.timetuple().tm_yday)
-
-                if day is None:
-
-                    continue
+                # get hour and if on peak
+                time = extract_time_from_string(str(row['pta']))
+                on_peak = time.hour >= 9
 
 
-                # if the delay is over 0, there has been delay
-                new_row = {
+                data['delay']           .append(delay)
+                data['departure_delay'] .append(departure_delay)
 
-                    'delay':    delay,
-                    'day':      day,
-                    'duration': duration}
+                data['day_of_week']     .append(day_of_week)
+                data['day_of_month']    .append(day_of_month)
+                data['weekday']         .append(int(weekday))
+
+                data['on_peak']         .append(int(on_peak))
+                data['hour']            .append(time.hour)
 
 
-                data = data._append(new_row, ignore_index=True)
-
-
-    return data
+    return pd.DataFrame.from_dict(data)
 
 
 def train_model(data, model):
@@ -180,7 +177,7 @@ def train_model(data, model):
     print(X)
 
     seed = 91
-    test_size = 0.1
+    test_size = 0.2
 
     X_train, X_test, y_train, y_test = train_test_split(
        X, y, test_size=test_size, random_state=seed)
@@ -188,14 +185,19 @@ def train_model(data, model):
     model.fit(X_train, y_train)
     y_predict = model.predict(X_test)
 
-    plt.scatter(X_train['duration'], y_train, color='black', label='training data')
-    plt.plot(X_test['duration'], y_predict, color='b', label='Linear Regression')
+    print(model.score(X_test, y_test))
+
+    plt.scatter(X_train['day_of_month'], y_train, color='black', label='training data')
+    plt.plot(X_test['day_of_month'], y_predict, color='b', label='Linear Regression')
     plt.show()
 
 
 # main #
 
 def main():
+
+    t = dt.datetime.strptime('00:12:02', '%H:%M:%S')
+    print(t)
 
     data = None
     option = 1
@@ -232,27 +234,24 @@ def main():
 
         if full or option == 3:
 
-            model = BayesianRidge()
+            model = KNeighborsRegressor()
 
             train_model(data, model)
 
 
         if option == 1 or option == 9:
 
-            num_of_points = 12
-            divisor = 356 / num_of_points
             averages = []
 
-            for i in range(0, num_of_points):
+            for i in range(0, 24):
 
                 r = data.loc[
-                    (data['day'] < (i + 1) * divisor)
-                    & (data['day'] > i * divisor)]['delay']
+                    (data['hour'] == i)]['delay']
 
                 averages.append(r.mean())
 
 
-            plt.plot(range(0, num_of_points), averages, 'o')
+            plt.plot(range(0, 24), averages, 'o')
             plt.show()
 
 
