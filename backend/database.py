@@ -6,6 +6,6 @@ DB_URL = "postgresql://postgres.mjqyvtlejtkjyfhpfqpe:LKzKcusHMOzErl0s@aws-0-eu-w
 
 engine = create_engine(DB_URL)
 
-SessionLocal = sessionmaker(autocommut=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

@@ -8,6 +8,7 @@ import uuid
 import json
 
 from database import engine, SessionLocal
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 import models
 
@@ -38,7 +39,7 @@ class SessionBody(BaseModel):
     session_active: bool
 
 def getDb():
-    db = SessionLocal
+    db = SessionLocal()
     try:
         yield db
     finally:
@@ -66,53 +67,58 @@ def getUserID(request: Request):
         
         #* Return the new user ID and set it as a cookie
         response = Response(json.dumps({"user_ID": new_ID}))
-        response.set_cookie("user_ID", value=new_ID, max_age=3600, httponly=True)
+        response.set_cookie("user_ID", value=new_ID, max_age=9999, httponly=True)
         return response
 
 
 @app.post("/user/send-chat/")
-def chat(session_ID: str, user_message: str):
+def chat(session_ID: str, user_message: str, db: db_dependency):
+    
+    session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
     #* Check if session exsists
-    if session_ID not in sessions:
+    if not session:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
     
-    session = sessions[session_ID]
-    
+    #* Check that session is active
     if not session.session_active:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
-        
-    #* Get the session from database
-    session = sessions[session_ID]
+    
+    new_chat_hist = session.chat_history
+    
+    print(new_chat_hist)
     
     #* Append user's message to chat history
-    session.chat_hist.append({"user": True, "message": user_message, "timestamp": datetime.now().isoformat()})
+    # db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'': session.chat_history.app})
     
-    #* Update the session's timestamp
-    session.timestamp = datetime.now().isoformat()
+    # session.chat_hist.append({"user": True, "message": user_message, "timestamp": datetime.now().isoformat()})
+    
+    # #* Update the session's timestamp
+    # session.timestamp = datetime.now().isoformat()
     
     return {"message": "Message recieved and processed successfully"}
 
 @app.get("/session")
-def getSession():
+def getSession(db: db_dependency):
+    #* Checks for the latest session that is still active
+    session = db.query(models.Session).filter(models.Session.session_active == True).first()
     
-    for session_ID in sessions.keys():
-        session = sessions[session_ID]
-        
-        #* Check if session is active
-        if session.session_active:
-            return {"message": "Session found", "data": sessions[session_ID]}
-    
-    raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No active sessions found")
+    #* Check if active session exists
+    if not session:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No active sessions found")
+   
+    return {"message": "Session found", "data": session}
 
 @app.get("/session/{session_ID}")
-def getSession(session_ID: str):
+def getSession(session_ID: str, db: db_dependency):
+    #* Query the database for a session by session ID
+    session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
     #* Check if session exists
-    if session_ID not in sessions:
+    if not session:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
-
-    return {"message": "Session found", "data": sessions[session_ID]}
+    
+    return {"message": "Session found", "data": session}
 
 @app.post("/session/start/")
 def startSession(user_ID: str, db: db_dependency):
@@ -137,39 +143,41 @@ def startSession(user_ID: str, db: db_dependency):
     
     db.add(db_session)
     db.commit()
-    db.refresh()
-    
+    db.refresh(db_session)
     
     return {"message": "Session started successfully", "session_ID": session_ID}
 
 @app.post("/session/end/")
-def endSession():
-    for session_ID in sessions.keys():
-        session = sessions[session_ID]
-        
-        #* Check if session is active
-        if session.session_active:
-            
-            #* Set session to inactive
-            session.session_active = False
-            
-            return {"message": "Session ended successfully"}
+def endSession(db: db_dependency):
+    #* Get the latest active session
+    session = db.query(models.Session).filter(models.Session.session_active == True).first()
     
-    raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No active sessions found")
+    #* Check if active session exists
+    if not session:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No active sessions found")
+        
+    #* Set session to inactive
+    db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'session_active': False})
+    db.commit()
+    db.refresh(session)
+    
+    return {"message": "Session ended successfully"}
 
 @app.post("/session/end/{session_ID}")
-def endSession(session_ID: str):
+def endSession(session_ID: str, db: db_dependency):
+    #* Get session by session ID
+    session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
-    #* Check if session exists
-    if session_ID not in sessions:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
-
-    session = sessions[session_ID]
-    
+    #* Check if active session exists
+    if not session:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No active sessions found")
+        
     #* Set session to inactive
-    session.session_active = False
+    db.query(models.Session).update({'session_active': False})
+    db.commit()
+    db.refresh(session)
     
-    return {"message": "Session ended"}
+    return {"message": "Session ended successfully"}
 
 @app.post("/session/reset/")
 def resetSession():
