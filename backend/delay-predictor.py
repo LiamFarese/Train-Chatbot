@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from pandas.core.interchange import dataframe
 
+import pickle
+
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression, BayesianRidge
 from sklearn.metrics import balanced_accuracy_score
@@ -20,6 +22,7 @@ import datetime as dt
 
 historical_data_path = 'historical-data'
 historical_table_path = f'{historical_data_path}/historical_table.csv'
+station_dict_path = f'{historical_data_path}/station_dict.pkl'
 
 
 # functions #
@@ -83,7 +86,11 @@ def get_full_historical_dataset(print_progress=False):
         'weekday': [],
         'on_peak': [],
         'hour': [],
+        'first_stop': [],
+        'second_stop': [],
     }
+
+    station_dict = {}
 
     for year in range(2017, 2023):
 
@@ -108,6 +115,7 @@ def get_full_historical_dataset(print_progress=False):
                     & (historical['ptd'].notnull())
                     & (historical['ptd'].notnull())
                     & (historical['dep_at'].notnull())
+                    & (historical['tpl'].notnull())
                 ]
 
             previous_row = None
@@ -144,6 +152,7 @@ def get_full_historical_dataset(print_progress=False):
                 if previous_day_of_month != day_of_month:
 
                     previous_day_of_month = day_of_month
+                    previous_row = row
                     continue
 
 
@@ -156,6 +165,22 @@ def get_full_historical_dataset(print_progress=False):
                 time = extract_time_from_string(str(row['pta']))
                 on_peak = time.hour >= 9
 
+                # get first and second stop
+                first_stop = previous_row['tpl']
+
+                if first_stop not in station_dict:
+
+                    # index station as next possible + 1
+                    station_dict[first_stop] = len(station_dict) + 1
+
+
+                # get first and second stop
+                second_stop = row['tpl']
+
+                if second_stop not in station_dict:
+                    # index station as next possible + 1
+                    station_dict[second_stop] = len(station_dict) + 1
+
 
                 data['delay']           .append(delay)
                 data['departure_delay'] .append(departure_delay)
@@ -167,6 +192,14 @@ def get_full_historical_dataset(print_progress=False):
                 data['on_peak']         .append(int(on_peak))
                 data['hour']            .append(time.hour)
 
+                data['first_stop']     .append(station_dict[first_stop])
+                data['second_stop']     .append(station_dict[second_stop])
+
+                previous_row = row
+
+
+    with open(station_dict_path, 'wb') as file:
+        pickle.dump(station_dict, file)
 
     return pd.DataFrame.from_dict(data)
 
@@ -192,10 +225,8 @@ def train_model(data, model):
 
 def main():
 
-    t = dt.datetime.strptime('00:12:02', '%H:%M:%S')
-    print(t)
-
     data = None
+    station_dict = None
     option = 1
 
     while option > 0:
@@ -220,20 +251,27 @@ def main():
             print("table saved!\n")
 
 
-        # all options after 2 require the table to be loaded
+        # all options after 2 require the table and dict to be loaded
         if full or option > 2:
 
             if data is None:
 
                 data = pd.read_csv(historical_table_path, index_col=0)
-                print(data)
+
+
+            if station_dict is None:
+
+                with open(station_dict_path, 'rb') as file:
+                    station_dict = pickle.load(file)
+
+                print(station_dict)
 
 
         if full or option == 3:
 
             print('Testing knn')
 
-            for i in range(5, 10):
+            for i in range(20, 30):
 
                 model = KNeighborsRegressor(n_neighbors=i, n_jobs=-1)
                 score = train_model(data, model)
