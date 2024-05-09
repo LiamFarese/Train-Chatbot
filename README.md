@@ -8,7 +8,7 @@ npm install
 npx expo start
 ```
 
-Backend Prerequisites:
+Backend Prerequisites (use "pip install {PACKAGE NAME}"):
 
 ```
 fastapi

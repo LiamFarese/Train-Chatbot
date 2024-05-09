@@ -4,3 +4,4 @@
 
 /.vs
 /frontend/node_modules
+/backend/__pycache__

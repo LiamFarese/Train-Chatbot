@@ -84,17 +84,18 @@ def chat(session_ID: str, user_message: str, db: db_dependency):
     if not session.session_active:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
     
-    new_chat_hist = session.chat_history
+    exisiting_history = session.chat_history
     
-    print(new_chat_hist)
+    exisiting_history.append(json.dumps({
+        "user": True,
+        "message": user_message,
+        "timestamp": datetime.now().isoformat()
+    }))
+        
+    #* Update the session's timestamp
+    session.timestamp = datetime.now().isoformat()
     
-    #* Append user's message to chat history
-    # db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'': session.chat_history.app})
-    
-    # session.chat_hist.append({"user": True, "message": user_message, "timestamp": datetime.now().isoformat()})
-    
-    # #* Update the session's timestamp
-    # session.timestamp = datetime.now().isoformat()
+    db.commit()
     
     return {"message": "Message recieved and processed successfully"}
 
@@ -106,7 +107,9 @@ def getSession(db: db_dependency):
     #* Check if active session exists
     if not session:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="No active sessions found")
-   
+    
+    print(session.chat_history)
+    
     return {"message": "Session found", "data": session}
 
 @app.get("/session/{session_ID}")
