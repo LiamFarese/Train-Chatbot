@@ -137,7 +137,7 @@ def extract_entities(user_input):
 flag = True
 doc = None
 while flag:
-    print("Hi there! How can I help you?.\n (If you want to exit, just type bye!)")
+    print("Hi there! How can I help you?. (If you want to exit, just type bye!)")
     raw_input = input()
     doc = nlp(raw_input)
     intention = check_intention_by_keyword(raw_input)
