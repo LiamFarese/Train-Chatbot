@@ -1,6 +1,5 @@
 import json
-from parser import ParserError
-from queue import Full
+import csv
 import random
 import spacy
 from experta import *
@@ -9,12 +8,11 @@ from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
 
 
-
 nlp = spacy.load('en_core_web_md')
 
-intentions_path = "intentions.json"
-sentences_path = "sentences.txt"
-
+intentions_path = "data/intentions.json"
+sentences_path = "data/sentences.txt"
+station_names_path = "data/stations.csv"
 time_sentences = ''
 date_sentences = ''
 
@@ -29,6 +27,18 @@ with open(sentences_path) as file:
         elif parts[0] == 'date':
             date_sentences = date_sentences + ' ' + parts[1].strip()
 
+
+station_codes = {}
+
+with open(station_names_path) as file:
+    reader = csv.DictReader(file)
+
+    for row in reader:
+        key = row['name']
+        value = row['tiploc']
+
+        station_codes[key] = value
+
 labels = []
 sentences = []
 
@@ -41,74 +51,6 @@ doc = nlp(date_sentences)
 for sentence in doc.sents:
     labels.append("date")
     sentences.append(sentence.text.lower().strip())
-
-# def lemmatize_and_clean(text):
-#     doc = nlp(text.lower())
-#     out = ""
-#     for token in doc:
-#         if not token.is_stop and not token.is_punct:  # Blank 1
-#             out = out + token.lemma_ + " "  # Blank 2
-#     return out.strip()
-
-# final_chatbot = False
-
-# def date_time_response(user_input):
-#     cleaned_user_input = lemmatize_and_clean(user_input)
-#     doc_1 = nlp(cleaned_user_input)
-#     similarities = {}
-#     for idx, sentence in enumerate(sentences):
-#         cleaned_sentence = lemmatize_and_clean(sentence)
-#         doc_2 = nlp(cleaned_sentence)
-#         similarity = doc_1.similarity(doc_2)
-#         similarities[idx] = similarity
-
-#     max_similarity_idx = max(similarities, key=similarities.get)
-    
-#     # Minimum acceptable similarity between user's input and our Chatbot data
-#     # This number can be changed
-#     min_similarity = 0.75
-
-#     # Do not change these lines
-#     if similarities[max_similarity_idx] > min_similarity:
-#         if labels[max_similarity_idx] == 'time':
-#             print("BOT: " + "It’s " + str(datetime.now().strftime('%H:%M:%S')))
-#             if final_chatbot:
-#                 print("BOT: You can also ask me what the date is today. (Hint: What is the date today?)")
-#         elif labels[max_similarity_idx] == 'date':
-#             print("BOT: " + "It’s " + str(datetime.now().strftime('%Y-%m-%d')))
-#             if final_chatbot:
-#                 print("BOT: Now can you tell me where you want to go? (Hints: you can type in a city's name, or an organisation. I am going to London or I want to visit the University of East Anglia.)")
-#         return True
-    
-#     return False
-
-# sample_user_input = "Tell me the time!"
-# print(sample_user_input)
-# date_time_response(sample_user_input)
-
-# class Book(Fact):
-#     """Info about the booking ticket."""
-#     pass
-
-# class TrainBot(KnowledgeEngine):
-#   @Rule(Book(ticket='one way'))
-#   def one_way(self):
-#     print("BOT: You have selected a one way ticket. Have a good trip.")
-#     if final_chatbot:
-#       print("BOT: If you don't have any other questions you can type bye.")
-
-#   @Rule(Book(ticket='round'))
-#   def round_way(self):
-#     print("BOT: You have selected a round ticket. Have a good trip.")
-#     if final_chatbot:
-#       print("BOT: If you don't have any other questions you can type bye.")
-
-#   @Rule(AS.ticket << Book(ticket=L('open ticket') | L('open return')))
-#   def open_ticket(self, ticket):
-#     print("BOT: You have selected a " + ticket["ticket"] +".  Have a good trip.")
-#     if final_chatbot:
-#       print("BOT: If you don't have any other questions you can type bye.")
-
 
 final_chatbot = False
 departure = None
@@ -130,14 +72,27 @@ def check_intention_by_keyword(sentence):
                 return type_of_intention
     return None
 
+def convert_station_name(city):
+    city = city.upper()
+    station_code = station_codes.get(city)
+    if station_code is None:
+        stations_with_city = [station for station in station_codes.keys() if city in station]
+        if stations_with_city:
+            return stations_with_city, "multiple"
+        else:
+            return None, "not_found"
+    else:
+        return station_code, "single"
+
 def convert_date(input):
     global date
+    days_of_the_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     if input.lower() == "tomorrow":
         date = (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
-    elif input.lower() in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]:
+    elif input.lower() in days_of_the_week:
         # Calculate date for the next occurrence of the specified day of the week
         today = datetime.now()
-        days_until_target_day = ((["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].index(input.lower()) - today.weekday()) + 7) % 7
+        days_until_target_day = ((days_of_the_week.index(input.lower()) - today.weekday()) + 7) % 7
         date = (today + relativedelta(days=days_until_target_day)).strftime("%d/%m/%Y")
     else:
         date = parse_date(input).strftime("%d/%m/%Y")
@@ -146,6 +101,7 @@ def convert_time(input):
     global time
     time_obj = parse_date(input).time()
     time = time_obj.strftime("%H:%M:%S")
+
 
 def extract_entities(user_input):
     global return_ticket, time, date, departure, destination
@@ -189,7 +145,6 @@ while flag:
         flag = False
     elif intention is None:
         extract_entities(doc)
-        print(departure, destination)
         # Check if any field is missing
         if departure is None or destination is None or time is None or date is None:
             # Prompt user for missing information
@@ -209,8 +164,31 @@ while flag:
         else:
             # All fields are present, you can proceed with further actions
             print("All necessary information is available. Proceeding with further actions...")
-    print(departure, destination, time, date)
+    print("departure:", departure, ", destination:", destination, ", at:", time, ", on:", date)
     departure = None
     destination = None
     time = None
     date = None
+
+# class Book(Fact):
+#     """Info about the booking ticket."""
+#     pass
+
+# class TrainBot(KnowledgeEngine):
+#   @Rule(Book(ticket='one way'))
+#   def one_way(self):
+#     print("BOT: You have selected a one way ticket. Have a good trip.")
+#     if final_chatbot:
+#       print("BOT: If you don't have any other questions you can type bye.")
+
+#   @Rule(Book(ticket='round'))
+#   def round_way(self):
+#     print("BOT: You have selected a round ticket. Have a good trip.")
+#     if final_chatbot:
+#       print("BOT: If you don't have any other questions you can type bye.")
+
+#   @Rule(AS.ticket << Book(ticket=L('open ticket') | L('open return')))
+#   def open_ticket(self, ticket):
+#     print("BOT: You have selected a " + ticket["ticket"] +".  Have a good trip.")
+#     if final_chatbot:
+#       print("BOT: If you don't have any other questions you can type bye.")
