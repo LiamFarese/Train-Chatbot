@@ -112,7 +112,6 @@ def extract_entities(user_input):
     # Extract dependency relations
     dep_relations = [(token.text, token.dep_, token.head.text) for token in user_input]
 
-    # Heuristic to determine departure and destination
     for ent in entities:
         for token, dep, head in dep_relations:
             if ent[0] == token:
@@ -134,6 +133,8 @@ def extract_entities(user_input):
             convert_date(token.text)
         last_token = token
 
+
+#prototype bot loop, to be replaced by experta
 flag = True
 doc = None
 while flag:
@@ -158,11 +159,8 @@ while flag:
                     convert_time(input("Please provide the time: "))
                 if date is None:
                     convert_date(input("Please provide the date: "))
-                # Now you have all required information, you can proceed with further actions
                 print("Thank you for providing the information. Now, I can proceed.")
-                # Your further actions based on extracted and prompted information can go here
         else:
-            # All fields are present, you can proceed with further actions
             print("All necessary information is available. Proceeding with further actions...")
     print("departure:", departure, ", destination:", destination, ", at:", time, ", on:", date)
     departure = None
