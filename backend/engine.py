@@ -7,7 +7,6 @@ from datetime import datetime
 from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
 
-
 nlp = spacy.load('en_core_web_md')
 
 intentions_path = "data/intentions.json"
@@ -53,11 +52,11 @@ for sentence in doc.sents:
     sentences.append(sentence.text.lower().strip())
 
 final_chatbot = False
-departure = None
-destination = None
-date = None
-time = None
-return_ticket = False
+# departure = None
+# destination = None
+# date = None
+# time = None
+# return_ticket = False
 
 
 def check_intention_by_keyword(sentence):
@@ -73,38 +72,60 @@ def check_intention_by_keyword(sentence):
     return None
 
 def convert_station_name(city):
+
     city = city.upper()
     station_code = station_codes.get(city)
+    multiple_found = False
+
+    # if there is no station code, set to list of stations
     if station_code is None:
+
         stations_with_city = [station for station in station_codes.keys() if city in station]
+
+        print(stations_with_city)
+
         if stations_with_city:
-            return stations_with_city, "multiple"
+
+            multiple_found = True
+            station_code = stations_with_city
+
         else:
-            return None, "not_found"
-    else:
-        return station_code, "single"
+
+            station_code = None
+
+
+    return station_code, multiple_found
+
 
 def convert_date(input):
-    global date
+
     days_of_the_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
     if input.lower() == "tomorrow":
-        date = (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
+
+        return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
+
+
     elif input.lower() in days_of_the_week:
+
         # Calculate date for the next occurrence of the specified day of the week
         today = datetime.now()
         days_until_target_day = ((days_of_the_week.index(input.lower()) - today.weekday()) + 7) % 7
-        date = (today + relativedelta(days=days_until_target_day)).strftime("%d/%m/%Y")
-    else:
-        date = parse_date(input).strftime("%d/%m/%Y")
+        return (today + relativedelta(days=days_until_target_day)).strftime("%d/%m/%Y")
+
+
+    return parse_date(input).strftime("%d/%m/%Y")
+
 
 def convert_time(input):
-    global time
+
     time_obj = parse_date(input).time()
-    time = time_obj.strftime("%H:%M:%S")
+    return time_obj.strftime("%H:%M:%S")
 
 
 def extract_entities(user_input):
-    global return_ticket, time, date, departure, destination
+
+    return_ticket = time = date = departure = destination = None
 
     # Extract entities
     entities = [(ent.text, ent.label_) for ent in user_input.ents]
@@ -113,80 +134,110 @@ def extract_entities(user_input):
     dep_relations = [(token.text, token.dep_, token.head.text) for token in user_input]
 
     for ent in entities:
+
         for token, dep, head in dep_relations:
+
             if ent[0] == token:
+
                 if dep == "pobj" and head in ["from", "leave"]:
+
                     departure = ent[0]
+
+
                 elif dep == "pobj" and head in ["to", "arrive", "at"]:
+
                     destination = ent[0]
 
+
     if any(token.text.lower() == "return" for token in user_input):
+
         return_ticket = True
 
+
     last_token = None
+
     # Extract time and date
     for token in user_input:
+
         if token.ent_type_ == "TIME":
+
             time_str = last_token.text + token.text
             convert_time(time_str)
+
+
         elif token.ent_type_ == "DATE" and date is None:
+
             convert_date(token.text)
+
+
         last_token = token
 
 
-#prototype bot loop, to be replaced by experta
-flag = True
-doc = None
-while flag:
-    print("Hi there! How can I help you?. (If you want to exit, just type bye!)")
-    raw_input = input()
-    doc = nlp(raw_input)
-    intention = check_intention_by_keyword(raw_input)
-    if intention == 'goodbye':
-        flag = False
-    elif intention is None:
-        extract_entities(doc)
-        # Check if any field is missing
-        if departure is None or destination is None or time is None or date is None:
-            # Prompt user for missing information
-            print("I need some more information to proceed:")
-            while(departure is None or destination is None or time is None or date is None):
-                if departure is None:
-                    departure = input("Please provide the departure point: ")
-                if destination is None:
-                    destination = input("Please provide the destination: ")
-                if time is None:
-                    convert_time(input("Please provide the time: "))
-                if date is None:
-                    convert_date(input("Please provide the date: "))
-                print("Thank you for providing the information. Now, I can proceed.")
-        else:
-            print("All necessary information is available. Proceeding with further actions...")
-    print("departure:", departure, ", destination:", destination, ", at:", time, ", on:", date)
-    departure = None
-    destination = None
-    time = None
-    date = None
+    return return_ticket, time, date, departure, destination
 
-# class Book(Fact):
-#     """Info about the booking ticket."""
-#     pass
 
-# class TrainBot(KnowledgeEngine):
-#   @Rule(Book(ticket='one way'))
-#   def one_way(self):
-#     print("BOT: You have selected a one way ticket. Have a good trip.")
-#     if final_chatbot:
-#       print("BOT: If you don't have any other questions you can type bye.")
+class Book(Fact):
 
-#   @Rule(Book(ticket='round'))
-#   def round_way(self):
-#     print("BOT: You have selected a round ticket. Have a good trip.")
-#     if final_chatbot:
-#       print("BOT: If you don't have any other questions you can type bye.")
+    """
+    return_ticket = Return Ticket
+    dep_station = Departure Station
+    arr_station = Arrival Station
+    dep_date = Departure Date
+    dep_time = Departure Time
+    """
 
-#   @Rule(AS.ticket << Book(ticket=L('open ticket') | L('open return')))
-#   def open_ticket(self, ticket):
-#     print("BOT: You have selected a " + ticket["ticket"] +".  Have a good trip.")
-#     if final_chatbot:
-#       print("BOT: If you don't have any other questions you can type bye.")
+    pass
+
+
+class TrainBot(KnowledgeEngine):
+
+    @DefFacts()
+    def _initial_action(self):
+
+        return_ticket, time, date, departure, destination = extract_entities(nlp(input("Hello!\n\t")))
+
+        yield Book(
+
+            return_ticket=return_ticket,
+            dep_time=time,
+            dep_date=date,
+            dep_station=departure,
+            arr_station=destination,
+        )
+
+
+    @Rule(Book(dep_station=None))
+    def _get_dep_station(self):
+
+        station_code = None
+        multiple_found = True
+
+        while station_code is None or multiple_found:
+
+            city = input("Sorry, we didn't get the station of departure. Where will you be departing from?\n\t")
+            station_code, multiple_found = convert_station_name(city)
+
+            if multiple_found:
+
+                print(f"Which station in {city}?...\n")
+
+                for code in station_code:
+
+                    print(f"- {code}?")
+
+
+        self.declare(Book(dep_station=station_code))
+
+
+# test harness to prove it works
+def TestHarness():
+
+    bot = TrainBot()
+    bot.reset()
+    bot.run()
+
+
+# if running this file, run the test harness
+if __name__ == '__main__':
+
+    TestHarness()
