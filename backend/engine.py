@@ -64,12 +64,13 @@ def check_intention_by_keyword(sentence):
         for type_of_intention in intentions:
             if word.lower() in intentions[type_of_intention]["patterns"]:
                 print("BOT: " + random.choice(intentions[type_of_intention]["responses"]))
-                
+
                 # Do not change these lines
                 if type_of_intention == 'greeting' and final_chatbot:
                     print("BOT: We can talk about the time, date, and train tickets.\n(Hint: What time is it?)")
                 return type_of_intention
     return None
+
 
 def convert_station_name(city):
 
@@ -81,8 +82,6 @@ def convert_station_name(city):
     if station_code is None:
 
         stations_with_city = [station for station in station_codes.keys() if city in station]
-
-        print(stations_with_city)
 
         if stations_with_city:
 
@@ -137,6 +136,8 @@ def extract_entities(user_input):
 
         for token, dep, head in dep_relations:
 
+            print(dep)
+
             if ent[0] == token:
 
                 if dep == "pobj" and head in ["from", "leave"]:
@@ -176,6 +177,40 @@ def extract_entities(user_input):
     return return_ticket, time, date, departure, destination
 
 
+def clarify_station(is_departure):
+
+    station_code = None
+    multiple_found = True
+
+
+    # get words to say in print so arrival and departure can be unified
+
+    word = "departure"
+    ing = "departing"
+
+    if is_departure:
+
+        word = "arrival"
+        ing = "arriving"
+
+
+    while station_code is None or multiple_found:
+
+        city = input(f"Sorry, we didn't get the station of {word}. Where will you be {ing} from?\n\t")
+        station_code, multiple_found = convert_station_name(city)
+
+        if multiple_found:
+
+            print(f"Which station in {city}?...\n")
+
+            for code in station_code:
+
+                print(f"- {code}?")
+
+
+    return station_code
+
+
 class Book(Fact):
 
     """
@@ -196,37 +231,58 @@ class TrainBot(KnowledgeEngine):
 
         return_ticket, time, date, departure, destination = extract_entities(nlp(input("Hello!\n\t")))
 
-        yield Book(
+        if return_ticket is not None:
 
-            return_ticket=return_ticket,
-            dep_time=time,
-            dep_date=date,
-            dep_station=departure,
-            arr_station=destination,
-        )
+            yield Book(return_ticket=return_ticket)
+
+        if time is not None:
+
+            yield Book(dep_time=time)
+
+        if date is not None:
+
+            yield Book(dep_date=date)
+
+        if departure is not None:
+
+            yield Book(dep_station=departure)
+
+        if destination is not None:
+
+            yield Book(arr_station=destination)
 
 
-    @Rule(Book(dep_station=None))
+    # get Departure Station
+    @Rule(NOT(Book(dep_station=W())))
     def _get_dep_station(self):
 
-        station_code = None
-        multiple_found = True
-
-        while station_code is None or multiple_found:
-
-            city = input("Sorry, we didn't get the station of departure. Where will you be departing from?\n\t")
-            station_code, multiple_found = convert_station_name(city)
-
-            if multiple_found:
-
-                print(f"Which station in {city}?...\n")
-
-                for code in station_code:
-
-                    print(f"- {code}?")
-
+        station_code = clarify_station(False)
 
         self.declare(Book(dep_station=station_code))
+
+
+    # get Arrival Station
+    @Rule(NOT(Book(arr_station=W())))
+    def get_arr_station(self):
+
+        station_code = clarify_station(True)
+
+        self.declare(Book(arr_station=station_code))
+
+
+    # if every information has been filled out
+    @Rule(
+        #Book(return_ticket=None),
+        #Book(dep_time=None),
+        #Book(dep_date=None),
+        Book(dep_station=MATCH.dep_station),
+        Book(arr_station=MATCH.arr_station),)
+    def success(self, dep_station, arr_station):
+
+        print(f"So you will be departing from {dep_station} and arriving at {arr_station}? Okay lol don't need "
+              f"to get so worked up about it...")
+
+        pass
 
 
 # test harness to prove it works
