@@ -118,6 +118,8 @@ def convert_date(input):
 
 def convert_time(input):
 
+    print(input)
+
     time_obj = parse_date(input).time()
     return time_obj.strftime("%H:%M:%S")
 
@@ -135,8 +137,6 @@ def extract_entities(user_input):
     for ent in entities:
 
         for token, dep, head in dep_relations:
-
-            print(dep)
 
             if ent[0] == token:
 
@@ -182,22 +182,27 @@ def clarify_station(is_departure):
     station_code = None
     multiple_found = True
 
-
     # get words to say in print so arrival and departure can be unified
-
-    word = "departure"
-    ing = "departing"
-
-    if is_departure:
-
-        word = "arrival"
-        ing = "arriving"
-
+    word = "departure" if is_departure else "arrival"
+    ing = "departing" if is_departure else "arriving"
 
     while station_code is None or multiple_found:
 
-        city = input(f"Sorry, we didn't get the station of {word}. Where will you be {ing} from?\n\t")
+        city = input(f"Sorry, we didn't get the station of {word}. Which station will you be {ing} from?\n\t")
+
         station_code, multiple_found = convert_station_name(city)
+
+        # if the user has not used a one word answer
+        if station_code is None:
+
+            for ent in nlp(city).ents:
+
+                station_code, multiple_found = convert_station_name(ent.text)
+
+                if station_code is not None:
+
+                    break
+
 
         if multiple_found:
 
@@ -252,35 +257,68 @@ class TrainBot(KnowledgeEngine):
             yield Book(arr_station=destination)
 
 
-    # get Departure Station
     @Rule(NOT(Book(dep_station=W())))
     def _get_dep_station(self):
 
-        station_code = clarify_station(False)
+        station_code = clarify_station(True)
 
         self.declare(Book(dep_station=station_code))
 
 
-    # get Arrival Station
     @Rule(NOT(Book(arr_station=W())))
     def get_arr_station(self):
 
-        station_code = clarify_station(True)
+        station_code = clarify_station(False)
 
         self.declare(Book(arr_station=station_code))
 
 
+    @Rule(NOT(Book(dep_time=W())))
+    def get_dep_time(self):
+
+        for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
+
+            if token.ent_type_ == "TIME":
+
+                self.declare(Book(dep_time=str(convert_time(token.text))))
+                break
+
+
+    @Rule(NOT(Book(dep_date=W())))
+    def get_dep_date(self):
+
+        for token in nlp(input("Sorry, we didn't get the date. What day will you be departing?\n\t")):
+
+            if token.ent_type_ == "DATE":
+
+                self.declare(Book(dep_date=str(convert_date(token.text))))
+                break
+
+
+    @Rule(NOT(Book(return_ticket=W())))
+    def get_return(self):
+
+        answer = input("Will you be returning? (yes or no)\n\t").lower()
+
+        return_ticket = "yes" in answer or "will be" in answer
+
+        self.declare(Book(return_ticket=return_ticket))
+
+
     # if every information has been filled out
     @Rule(
-        #Book(return_ticket=None),
-        #Book(dep_time=None),
-        #Book(dep_date=None),
+        Book(return_ticket=MATCH.return_ticket),
+        Book(dep_time=MATCH.dep_time),
+        Book(dep_date=MATCH.dep_date),
         Book(dep_station=MATCH.dep_station),
         Book(arr_station=MATCH.arr_station),)
-    def success(self, dep_station, arr_station):
+    def success(self, dep_station, arr_station, dep_date, dep_time, return_ticket):
 
-        print(f"So you will be departing from {dep_station} and arriving at {arr_station}? Okay lol don't need "
-              f"to get so worked up about it...")
+        return_string = "will" if return_ticket else "won't"
+
+        print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
+              f"{dep_time}? And it {return_string} be a return. "
+              f"Okay lol don't need to get so worked up about it...")
 
         pass
 
