@@ -11,7 +11,7 @@ import pickle
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression, BayesianRidge
-from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import AdaBoostRegressor, RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
@@ -268,6 +268,13 @@ def main():
 
 
         if full or option == 3:
+
+            print('Testing Random Forest Regressor')
+
+            model = RandomForestRegressor(max_depth=9, max_features=4)
+            score = train_model(data, model)
+            print(f'\tscore={score}')
+
 
             print('Testing Decision Tree Regressor')
 
