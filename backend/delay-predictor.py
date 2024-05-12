@@ -11,8 +11,8 @@ import pickle
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression, BayesianRidge
-from sklearn.metrics import balanced_accuracy_score
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import AdaBoostRegressor, RandomForestRegressor
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
 import datetime as dt
@@ -23,6 +23,7 @@ import datetime as dt
 historical_data_path = 'historical-data'
 historical_table_path = f'{historical_data_path}/historical_table.csv'
 station_dict_path = f'{historical_data_path}/station_dict.pkl'
+seed = 91
 
 
 # functions #
@@ -209,7 +210,6 @@ def train_model(data, model):
     X = data[data.columns.drop('delay')]
     y = data['delay']
 
-    seed = 91
     test_size = 0.2
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -268,6 +268,58 @@ def main():
 
 
         if full or option == 3:
+
+            print('Testing Random Forest Regressor')
+
+            model = RandomForestRegressor(max_depth=9, max_features=4)
+            score = train_model(data, model)
+            print(f'\tscore={score}')
+
+
+            print('Testing Decision Tree Regressor')
+
+            model = DecisionTreeRegressor()
+            score = train_model(data, model)
+            print(f'\tmax_depth=None, score={score}')
+
+            for i in range(5, 15):
+
+                model = DecisionTreeRegressor(max_depth=i)
+                score = train_model(data, model)
+                print(f'\tmax_depth={i}, score={score}')
+
+
+            for i in range(1, 10):
+
+                model = DecisionTreeRegressor(max_features=i)
+                score = train_model(data, model)
+                print(f'\tmax_features={i}, score={score}')
+
+
+            print('Testing Ada Boost Regressor')
+
+            estimator = DecisionTreeRegressor()
+            model = AdaBoostRegressor(estimator=estimator, random_state=seed)
+            score = train_model(data, model)
+            print(f'\tmax_depth=None, max_features=None, score={score}')
+
+            estimator = DecisionTreeRegressor(max_depth=9, max_features=4)
+            model = AdaBoostRegressor(estimator=estimator, random_state=seed)
+            score = train_model(data, model)
+            print(f'\tmax_depth=9, max_features=4, score={score}')
+
+            estimator = DecisionTreeRegressor(max_depth=9, max_features=None)
+            model = AdaBoostRegressor(estimator=estimator, random_state=seed)
+            score = train_model(data, model)
+            print(f'\tmax_depth=9, max_features=None, score={score}')
+
+            for i in range(3, 6):
+
+                estimator = DecisionTreeRegressor(max_depth=None, max_features=i)
+                model = AdaBoostRegressor(estimator=estimator, random_state=seed)
+                score = train_model(data, model)
+                print(f'\tmax_depth=None, max_features={i}, score={score}')
+
 
             print('Testing knn')
 
