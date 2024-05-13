@@ -118,8 +118,6 @@ def convert_date(input):
 
 def convert_time(input):
 
-    print(input)
-
     time_obj = parse_date(input).time()
     return time_obj.strftime("%H:%M:%S")
 
@@ -154,24 +152,22 @@ def extract_entities(user_input):
 
         return_ticket = True
 
-
-    last_token = None
-
+    time_tokens = []
     # Extract time and date
     for token in user_input:
 
         if token.ent_type_ == "TIME":
 
-            time_str = last_token.text + token.text
-            convert_time(time_str)
+            time_tokens.append(token.text)
 
 
         elif token.ent_type_ == "DATE" and date is None:
 
-            convert_date(token.text)
+            date = convert_date(token.text)
 
-
-        last_token = token
+    time_str = ''.join(time_tokens)
+    if time_str != '':
+        time = convert_time(''.join(time_tokens))
 
 
     return return_ticket, time, date, departure, destination
@@ -275,13 +271,14 @@ class TrainBot(KnowledgeEngine):
 
     @Rule(NOT(Book(dep_time=W())))
     def get_dep_time(self):
-
+        time_tokens = []
         for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
 
             if token.ent_type_ == "TIME":
-
-                self.declare(Book(dep_time=str(convert_time(token.text))))
-                break
+                time_tokens.append(token.text)
+        time_str = ''.join(time_tokens)
+        if time_str != '':
+            self.declare(Book(dep_time=str(convert_time(time_str))))
 
 
     @Rule(NOT(Book(dep_date=W())))
