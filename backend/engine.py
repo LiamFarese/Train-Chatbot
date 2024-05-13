@@ -103,6 +103,8 @@ def convert_date(input):
     if input.lower() == "tomorrow":
 
         return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
+    elif input.lower() == "today":
+        return datetime.now()
 
 
     elif input.lower() in days_of_the_week:
