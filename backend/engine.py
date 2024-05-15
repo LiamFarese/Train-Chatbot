@@ -341,7 +341,7 @@ class TrainBot(KnowledgeEngine):
 
         while return_date is None:
 
-            for token in nlp(input("What date will you be departing?\n\t")):
+            for token in nlp(input("What date will you be returning?\n\t")):
 
                 if token.ent_type_ == "DATE":
 
@@ -349,12 +349,13 @@ class TrainBot(KnowledgeEngine):
                     break
 
 
-            if return_date < departure_date:
+            if return_date is not None:
 
-                print("Sorry, the return date cannot be before the departure date. ")
-                return_date = None
+                if return_date < departure_date:
 
-            elif return_date is None:
+                    print("Sorry, the return date cannot be before the departure date. ")
+                    return_date = None
+            else:
 
                 print("Sorry, that date is invalid. ")
 
@@ -362,13 +363,10 @@ class TrainBot(KnowledgeEngine):
         self.declare(Book(return_date=return_date))
 
 
-        print(self.facts)
-
-
     # cannot occur without the date being set
     @Rule(
         Book(return_ticket=True),
-        Book(dep_time=MATCH.return_date),
+        Book(return_date=MATCH.return_date),
         Book(dep_date=MATCH.dep_date),
         Book(dep_time=MATCH.dep_time),
         NOT(Book(return_time=W())))
@@ -380,7 +378,7 @@ class TrainBot(KnowledgeEngine):
 
         while return_time is None:
 
-            for token in nlp(input("What is the time of return?\n\t")):
+            for token in nlp(input("What time will you depart for your return?\n\t")):
 
                 if token.ent_type_ == "TIME":
 
@@ -388,11 +386,13 @@ class TrainBot(KnowledgeEngine):
                     break
 
 
-            if check_time and return_time <= departure_time:
+            if return_time is not None:
 
-                print("Sorry, the return time cannot be before the departure time if they are on the same day. ")
+                if check_time and return_time <= departure_time:
 
-            elif return_time is None:
+                    print("Sorry, the return time cannot be before the departure time if they are on the same day. ")
+                    return_time = None
+            else:
 
                 print("Sorry, that time is invalid. ")
 
