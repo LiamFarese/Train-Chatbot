@@ -175,18 +175,17 @@ def extract_entities(user_input):
     return return_ticket, time, date, departure, destination
 
 
-def clarify_station(is_departure):
+def clarify_station(is_departure, other_station=None):
 
     station_code = None
     multiple_found = True
 
     # get words to say in print so arrival and departure can be unified
-    word = "departure" if is_departure else "arrival"
     ing = "departing" if is_departure else "arriving"
 
-    while station_code is None or multiple_found:
+    while station_code is None or multiple_found or station_code == other_station:
 
-        city = input(f"Sorry, we didn't get the station of {word}. Which station will you be {ing} from?\n\t")
+        city = input(f"Which station will you be {ing} from?\n\t")
 
         station_code, multiple_found = convert_station_name(city)
 
@@ -209,6 +208,11 @@ def clarify_station(is_departure):
             for code in station_code:
 
                 print(f"- {code}?")
+
+
+        if station_code == other_station:
+
+            print("Sorry, but you cannot arrive and depart from the same station. ")
 
 
     return station_code
@@ -258,7 +262,11 @@ class TrainBot(KnowledgeEngine):
             yield Book(arr_station=destination)
 
 
-    @Rule(NOT(Book(dep_station=W())))
+    # get Departure Station #
+
+
+    @Rule(AND(NOT(Book(dep_station=W())),
+          NOT(Book(arr_station=W()))))
     def _get_dep_station(self):
 
         station_code = clarify_station(True)
@@ -266,10 +274,32 @@ class TrainBot(KnowledgeEngine):
         self.declare(Book(dep_station=station_code))
 
 
-    @Rule(NOT(Book(arr_station=W())))
+    @Rule(NOT(Book(dep_station=W())),
+          Book(arr_station=MATCH.arr_station))
+    def _get_dep_station_check_arr_station(self, arr_station):
+
+        station_code = clarify_station(True, arr_station)
+
+        self.declare(Book(dep_station=station_code))
+
+
+    # get Arrival Station #
+
+
+    @Rule(AND(NOT(Book(dep_station=W())),
+          NOT(Book(arr_station=W()))))
     def get_arr_station(self):
 
         station_code = clarify_station(False)
+
+        self.declare(Book(arr_station=station_code))
+
+
+    @Rule(NOT(Book(arr_station=W())),
+          Book(dep_station=MATCH.dep_station))
+    def get_arr_station_check_dep_station(self, dep_station):
+
+        station_code = clarify_station(False, dep_station)
 
         self.declare(Book(arr_station=station_code))
 
