@@ -175,49 +175,6 @@ def extract_entities(user_input):
     return return_ticket, time, date, departure, destination
 
 
-def clarify_station(is_departure, other_station=None):
-
-    station_code = None
-    multiple_found = True
-
-    # get words to say in print so arrival and departure can be unified
-    ing = "departing" if is_departure else "arriving"
-
-    while station_code is None or multiple_found or station_code == other_station:
-
-        city = input(f"Which station will you be {ing} from?\n\t")
-
-        station_code, multiple_found = convert_station_name(city)
-
-        # if the user has not used a one word answer
-        if station_code is None:
-
-            for ent in nlp(city).ents:
-
-                station_code, multiple_found = convert_station_name(ent.text)
-
-                if station_code is not None:
-
-                    break
-
-
-        if multiple_found:
-
-            print(f"Which station in {city}?...\n")
-
-            for code in station_code:
-
-                print(f"- {code}?")
-
-
-        if station_code == other_station:
-
-            print("Sorry, but you cannot arrive and depart from the same station. ")
-
-
-    return station_code
-
-
 class Book(Fact):
 
     """
@@ -235,6 +192,70 @@ class Book(Fact):
 
 
 class TrainBot(KnowledgeEngine):
+
+    # if the user types "undo", delete the last fact
+    def check_undo(self, user_input):
+
+        user_input = user_input.lower()
+
+        if "undo" in user_input:
+
+            remove_key = list(self.facts.keys())[-1]
+            remove_fact = self.facts[remove_key]
+            self.retract(remove_fact)
+            print(self.facts)
+            return True
+
+        # unsuccessful
+        return False
+
+
+    # station clarification used in multiple functions
+    def clarify_station(self, is_departure, other_station=None):
+
+        station_code = None
+        multiple_found = True
+
+        # get words to say in print so arrival and departure can be unified
+        ing = "departing" if is_departure else "arriving"
+
+        while station_code is None or multiple_found or station_code == other_station:
+
+            city = input(f"Which station will you be {ing} from?\n\t")
+
+            if self.check_undo(city):
+                return None
+
+            station_code, multiple_found = convert_station_name(city)
+
+            # if the user has not used a one word answer
+            if station_code is None:
+
+                for ent in nlp(city).ents:
+
+                    station_code, multiple_found = convert_station_name(ent.text)
+
+                    if station_code is not None:
+
+                        break
+
+
+            if multiple_found:
+
+                print(f"Which station in {city}?...\n")
+
+                for code in station_code:
+
+                    print(f"- {code}?")
+
+
+            if station_code == other_station:
+
+                print("Sorry, but you cannot arrive and depart from the same station. ")
+
+
+        return station_code
+
 
     @DefFacts()
     def _initial_action(self):
@@ -269,7 +290,10 @@ class TrainBot(KnowledgeEngine):
           NOT(Book(arr_station=W()))))
     def _get_dep_station(self):
 
-        station_code = clarify_station(True)
+        station_code = self.clarify_station(True)
+
+        if station_code is None:
+            return
 
         self.declare(Book(dep_station=station_code))
 
@@ -278,7 +302,10 @@ class TrainBot(KnowledgeEngine):
           Book(arr_station=MATCH.arr_station))
     def _get_dep_station_check_arr_station(self, arr_station):
 
-        station_code = clarify_station(True, arr_station)
+        station_code = self.clarify_station(True, arr_station)
+
+        if station_code is None:
+            return
 
         self.declare(Book(dep_station=station_code))
 
@@ -290,7 +317,10 @@ class TrainBot(KnowledgeEngine):
           NOT(Book(arr_station=W()))))
     def get_arr_station(self):
 
-        station_code = clarify_station(False)
+        station_code = self.clarify_station(False)
+
+        if station_code is None:
+            return
 
         self.declare(Book(arr_station=station_code))
 
@@ -299,7 +329,10 @@ class TrainBot(KnowledgeEngine):
           Book(dep_station=MATCH.dep_station))
     def get_arr_station_check_dep_station(self, dep_station):
 
-        station_code = clarify_station(False, dep_station)
+        station_code = self.clarify_station(False, dep_station)
+
+        if station_code is None:
+            return
 
         self.declare(Book(arr_station=station_code))
 
@@ -311,7 +344,12 @@ class TrainBot(KnowledgeEngine):
 
         while dep_time is None:
 
-            for token in nlp(input("What time will you be departing?\n\t")):
+            user_input = input("What time will you be departing?\n\t")
+
+            if self.check_undo(user_input):
+                return
+
+            for token in nlp(user_input):
 
                 if token.ent_type_ == "TIME":
 
@@ -334,7 +372,12 @@ class TrainBot(KnowledgeEngine):
 
         while dep_date is None:
 
-            for token in nlp(input("What date will you be departing?\n\t")):
+            user_input = input("What date will you be departing?\n\t")
+
+            if self.check_undo(user_input):
+                return
+
+            for token in nlp(user_input):
 
                 if token.ent_type_ == "DATE":
 
@@ -353,9 +396,12 @@ class TrainBot(KnowledgeEngine):
     @Rule(NOT(Book(return_ticket=W())))
     def get_return(self):
 
-        answer = input("Will you be returning? (yes or no)\n\t").lower()
+        user_input = input("Will you be returning? (yes or no)\n\t").lower()
 
-        return_ticket = "yes" in answer or "will be" in answer
+        if self.check_undo(user_input):
+            return
+
+        return_ticket = "yes" in user_input or "will be" in user_input
 
         self.declare(Book(return_ticket=return_ticket))
 
@@ -371,7 +417,12 @@ class TrainBot(KnowledgeEngine):
 
         while return_date is None:
 
-            for token in nlp(input("What date will you be returning?\n\t")):
+            user_input = input("What date will you be returning?\n\t")
+
+            if self.check_undo(user_input):
+                return
+
+            for token in nlp(user_input):
 
                 if token.ent_type_ == "DATE":
 
@@ -408,7 +459,12 @@ class TrainBot(KnowledgeEngine):
 
         while return_time is None:
 
-            for token in nlp(input("What time will you depart for your return?\n\t")):
+            user_input = input("What time will you depart for your return?\n\t")
+
+            if self.check_undo(user_input):
+                return
+
+            for token in nlp(user_input):
 
                 if token.ent_type_ == "TIME":
 
