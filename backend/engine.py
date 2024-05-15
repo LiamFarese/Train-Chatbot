@@ -87,9 +87,7 @@ def convert_station_name(city):
 
             multiple_found = True
             station_code = stations_with_city
-
         else:
-
             station_code = None
 
 
@@ -279,23 +277,47 @@ class TrainBot(KnowledgeEngine):
     @Rule(NOT(Book(dep_time=W())))
     def get_dep_time(self):
 
-        for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
+        dep_time = None
 
-            if token.ent_type_ == "TIME":
+        while dep_time is None:
 
-                self.declare(Book(dep_time=str(convert_time(token.text))))
-                break
+            for token in nlp(input("What time will you be departing?\n\t")):
+
+                if token.ent_type_ == "TIME":
+
+                    dep_time = str(convert_time(token.text))
+                    break
+
+
+            if dep_time is None:
+
+                print("Sorry, that time is invalid. ")
+
+
+        self.declare(Book(dep_time=dep_time))
 
 
     @Rule(NOT(Book(dep_date=W())))
     def get_dep_date(self):
 
-        for token in nlp(input("Sorry, we didn't get the date. What day will you be departing?\n\t")):
+        dep_date = None
 
-            if token.ent_type_ == "DATE":
+        while dep_date is None:
 
-                self.declare(Book(dep_date=str(convert_date(token.text))))
-                break
+            for token in nlp(input("What date will you be departing?\n\t")):
+
+                if token.ent_type_ == "DATE":
+
+                    dep_date = str(convert_date(token.text))
+                    break
+
+
+            if dep_date is None:
+
+                print("Sorry, that date is invalid. ")
+
+
+        self.declare(Book(dep_date=dep_date))
 
 
     @Rule(NOT(Book(return_ticket=W())))
@@ -314,20 +336,30 @@ class TrainBot(KnowledgeEngine):
         NOT(Book(return_date=W())))
     def get_return_date(self, dep_date):
 
-        for token in nlp(input("What is the date of return?\n\t")):
+        return_date = None
+        departure_date = convert_date(dep_date)
 
-            if token.ent_type_ == "DATE":
+        while return_date is None:
 
-                return_date = convert_date(token.text)
-                departure_date = convert_date(dep_date)
+            for token in nlp(input("What date will you be departing?\n\t")):
 
-                if return_date >= dep_date:
+                if token.ent_type_ == "DATE":
 
-                    self.declare(Book(return_date=str(convert_date(token.text))))
-                else:
-                    print("The return date cannot be before the departure date")
+                    return_date = str(convert_date(token.text))
+                    break
 
-                break
+
+            if return_date < departure_date:
+
+                print("Sorry, the return date cannot be before the departure date. ")
+                return_date = None
+
+            elif return_date is None:
+
+                print("Sorry, that date is invalid. ")
+
+
+        self.declare(Book(return_date=return_date))
 
 
         print(self.facts)
@@ -337,16 +369,35 @@ class TrainBot(KnowledgeEngine):
     @Rule(
         Book(return_ticket=True),
         Book(dep_time=MATCH.return_date),
+        Book(dep_date=MATCH.dep_date),
         Book(dep_time=MATCH.dep_time),
         NOT(Book(return_time=W())))
-    def get_return_time(self):
+    def get_return_time(self, return_date, dep_date, dep_time):
 
-        for token in nlp(input("What is the time of return?\n\t")):
+        return_time = None
+        check_time = return_date == dep_date
+        departure_time = convert_time(dep_time)
 
-            if token.ent_type_ == "TIME":
+        while return_time is None:
 
-                self.declare(Book(return_time=str(convert_time(token.text))))
-                break
+            for token in nlp(input("What is the time of return?\n\t")):
+
+                if token.ent_type_ == "TIME":
+
+                    return_time = str(convert_time(token.text))
+                    break
+
+
+            if check_time and return_time <= departure_time:
+
+                print("Sorry, the return time cannot be before the departure time if they are on the same day. ")
+
+            elif return_time is None:
+
+                print("Sorry, that time is invalid. ")
+
+
+        self.declare(Book(return_time=return_time))
 
 
     # if every information has been filled out
