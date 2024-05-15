@@ -219,11 +219,14 @@ def clarify_station(is_departure):
 class Book(Fact):
 
     """
-    return_ticket = Return Ticket
     dep_station = Departure Station
     arr_station = Arrival Station
     dep_date = Departure Date
     dep_time = Departure Time
+
+    return_ticket = Return Ticket
+    return_date = Return Date
+    return_time = Return Time
     """
 
     pass
@@ -305,19 +308,75 @@ class TrainBot(KnowledgeEngine):
         self.declare(Book(return_ticket=return_ticket))
 
 
+    @Rule(
+        Book(return_ticket=True),
+        Book(dep_date=MATCH.dep_date),
+        NOT(Book(return_date=W())))
+    def get_return_date(self, dep_date):
+
+        for token in nlp(input("What is the date of return?\n\t")):
+
+            if token.ent_type_ == "DATE":
+
+                return_date = convert_date(token.text)
+                departure_date = convert_date(dep_date)
+
+                if return_date >= dep_date:
+
+                    self.declare(Book(return_date=str(convert_date(token.text))))
+                else:
+                    print("The return date cannot be before the departure date")
+
+                break
+
+
+        print(self.facts)
+
+
+    # cannot occur without the date being set
+    @Rule(
+        Book(return_ticket=True),
+        Book(dep_time=MATCH.return_date),
+        Book(dep_time=MATCH.dep_time),
+        NOT(Book(return_time=W())))
+    def get_return_time(self):
+
+        for token in nlp(input("What is the time of return?\n\t")):
+
+            if token.ent_type_ == "TIME":
+
+                self.declare(Book(return_time=str(convert_time(token.text))))
+                break
+
+
     # if every information has been filled out
     @Rule(
-        Book(return_ticket=MATCH.return_ticket),
+        Book(return_time=MATCH.return_time),
+        Book(return_date=MATCH.return_date),
         Book(dep_time=MATCH.dep_time),
         Book(dep_date=MATCH.dep_date),
         Book(dep_station=MATCH.dep_station),
         Book(arr_station=MATCH.arr_station),)
-    def success(self, dep_station, arr_station, dep_date, dep_time, return_ticket):
-
-        return_string = "will" if return_ticket else "won't"
+    def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
 
         print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
-              f"{dep_time}? And it {return_string} be a return. "
+              f"{dep_time}? And it will be a return on {return_date} at {return_time}. "
+              f"Okay lol don't need to get so worked up about it...")
+
+        pass
+
+
+    # if every information has been filled out
+    @Rule(
+        Book(return_ticket=False),
+        Book(dep_time=MATCH.dep_time),
+        Book(dep_date=MATCH.dep_date),
+        Book(dep_station=MATCH.dep_station),
+        Book(arr_station=MATCH.arr_station),)
+    def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
+
+        print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
+              f"{dep_time}? And it won't be a return. "
               f"Okay lol don't need to get so worked up about it...")
 
         pass
