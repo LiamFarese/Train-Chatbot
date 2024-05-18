@@ -42,7 +42,6 @@ def convert_station_name(city):
         else:
             station_code = None
 
-
     return station_code, multiple_found
 
 
