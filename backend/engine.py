@@ -9,23 +9,9 @@ from dateutil.relativedelta import relativedelta
 
 nlp = spacy.load('en_core_web_md')
 
-intentions_path = "data/intentions.json"
-sentences_path = "data/sentences.txt"
 station_names_path = "data/stations.csv"
 time_sentences = ''
 date_sentences = ''
-
-with open(intentions_path) as f:
-    intentions = json.load(f)
-
-with open(sentences_path) as file:
-    for line in file:
-        parts = line.split(' | ')
-        if parts[0] == 'time':
-            time_sentences = time_sentences + ' ' + parts[1].strip()
-        elif parts[0] == 'date':
-            date_sentences = date_sentences + ' ' + parts[1].strip()
-
 
 station_codes = {}
 
@@ -101,7 +87,9 @@ def convert_date(input):
     if input.lower() == "tomorrow":
 
         return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
-
+    
+    elif input.lower() == "today":
+        return datetime.now()
 
     elif input.lower() in days_of_the_week:
 
@@ -115,9 +103,7 @@ def convert_date(input):
 
 
 def convert_time(input):
-
-    print(input)
-
+    
     time_obj = parse_date(input).time()
     return time_obj.strftime("%H:%M:%S")
 
@@ -153,23 +139,22 @@ def extract_entities(user_input):
         return_ticket = True
 
 
-    last_token = None
-
+    time_tokens = []
     # Extract time and date
     for token in user_input:
 
         if token.ent_type_ == "TIME":
 
-            time_str = last_token.text + token.text
-            convert_time(time_str)
+            time_tokens.append(token.text)
 
 
         elif token.ent_type_ == "DATE" and date is None:
 
-            convert_date(token.text)
+            date = convert_date(token.text)
 
-
-        last_token = token
+    time_str = ''.join(time_tokens)
+    if time_str != '':
+        time = convert_time(''.join(time_tokens))
 
 
     return return_ticket, time, date, departure, destination
@@ -340,29 +325,14 @@ class TrainBot(KnowledgeEngine):
     @Rule(NOT(Book(dep_time=W())))
     def get_dep_time(self):
 
-        dep_time = None
+        time_tokens = []
+        for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
 
-        while dep_time is None:
-
-            user_input = input("What time will you be departing?\n\t")
-
-            if self.check_undo(user_input):
-                return
-
-            for token in nlp(user_input):
-
-                if token.ent_type_ == "TIME":
-
-                    dep_time = str(convert_time(token.text))
-                    break
-
-
-            if dep_time is None:
-
-                print("Sorry, that time is invalid. ")
-
-
-        self.declare(Book(dep_time=dep_time))
+            if token.ent_type_ == "TIME":
+                time_tokens.append(token.text)
+        time_str = ''.join(time_tokens)
+        if time_str != '':
+            self.declare(Book(dep_time=str(convert_time(time_str))))
 
 
     @Rule(NOT(Book(dep_date=W())))
@@ -464,13 +434,14 @@ class TrainBot(KnowledgeEngine):
             if self.check_undo(user_input):
                 return
 
+            time_tokens = []
             for token in nlp(user_input):
 
                 if token.ent_type_ == "TIME":
-
-                    return_time = str(convert_time(token.text))
-                    break
-
+                    time_tokens.append(token.text)
+                    time_str = ''.join(time_tokens)
+                if time_str != '':
+                    return_time = time_str
 
             if return_time is not None:
 
@@ -481,6 +452,7 @@ class TrainBot(KnowledgeEngine):
             else:
 
                 print("Sorry, that time is invalid. ")
+            
 
 
         self.declare(Book(return_time=return_time))
