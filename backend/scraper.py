@@ -98,7 +98,7 @@ def scrape(destination :str,
     result, url = get_ticket_info(ticket_query, return_query)
     return scrape_data(result), url
   except Exception as e:
-    return e
+    raise e
 
 def test_harness():
   print(scrape("NRW", "LST", "10/06/2024", "15:00:00", False, "", ""))
