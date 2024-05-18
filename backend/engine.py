@@ -179,7 +179,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
 
     predicted_delay = model.predict([[
 
-        0,
         day_of_week,
         day_of_year,
         weekday,
