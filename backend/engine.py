@@ -6,6 +6,7 @@ from experta import *
 from datetime import datetime
 from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
+from scraper import scrape
 
 nlp = spacy.load('en_core_web_md')
 
@@ -428,6 +429,14 @@ class TrainBot(KnowledgeEngine):
         print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
               f"{dep_time}? And it will be a return on {return_date} at {return_time}. "
               f"Okay lol don't need to get so worked up about it...")
+        
+        print("\n" +
+            scrape(
+                convert_station_name(dep_station)[0], 
+                convert_station_name(arr_station)[0], 
+                dep_date, dep_time, True, return_time, return_date
+                )
+            )
 
         pass
 
@@ -444,7 +453,15 @@ class TrainBot(KnowledgeEngine):
         print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
               f"{dep_time}? And it won't be a return. "
               f"Okay lol don't need to get so worked up about it...")
-
+        
+        print(
+            scrape(
+                convert_station_name(dep_station)[0], 
+                convert_station_name(arr_station)[0], 
+                dep_date, dep_time, False, "", ""
+                )
+            )
+        
         pass
 
 

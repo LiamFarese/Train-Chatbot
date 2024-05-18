@@ -28,17 +28,6 @@ class TicketInfo:
     self.delay           = delay
     self.operator        = operator
 
-def query():
-  origin        = input("Origin station code: ")
-  destination   = input("Destination station code: ")
-  travel_year   = input("travel year: ")
-  travel_month  = input("Travel month: ")
-  travel_day    = input("Travel day: ")
-  travel_hour   = input("Travel hour: ")
-  travel_minute = input("Travel minute: ")
-
-  return TicketQuery(origin, destination, travel_year, travel_month, travel_day, travel_hour, travel_minute)
-
 def write_results(response: requests.Response):
   if response.status_code == 200:
     print("Response written to response.json")
@@ -80,12 +69,14 @@ def scrape_data(response: requests.Response):
   arrival_time = datetime.fromisoformat(arrival_time)
   arrival_time = arrival_time.strftime("%Y-%m-%d %H:%M:%S")
 
-  result = f"Here is some information about the outward journey train: \ndeparture time: {depart_time}, arrival time: {arrival_time}, duration: {duration}"
+  if(data["inwardJourneys"]):
+    result = f"Here is some information about the outward journey train:\n"
+  else:
+    result = f"Here is some information about your journey:\n"
+  
+  result += f"departure time: {depart_time}, arrival time: {arrival_time}, duration: {duration}"
 
-  return_depart_time = None
-  return_arrive_time = None
-  return_duration    = None
-  if(data["inwardJourneys"] is not None):
+  if(data["inwardJourneys"]):
     depart_time  = data["inwardJourneys"][0]["timetable"]["scheduled"]["departure"]
     arrival_time = data["inwardJourneys"][0]["timetable"]["scheduled"]["arrival"]
     duration     = data["inwardJourneys"][0]["duration"] 
@@ -120,12 +111,15 @@ def scrape(destination :str,
 
   try:
     result, url = get_ticket_info(ticket_query, return_query)
-    return scrape_data(result) + f"\n\nHere is a link to book those tickets: \n{url}"
+    return scrape_data(result) + f"\n\nHere is a link to book your tickets: \n{url}"
   except Exception as e:
+    print(e)
     return f"Sorry, I was unable to find any tickets for that journey"
 
 def test_harness():
-  print(scrape("NRW", "LST", "19/05/2024", "15:00:00", True, "18:00:00", "24/05/2024"))
+  # print(scrape("NRW", "LST", "10/06/2024", "15:00:00", True, "18:00:00", "17/06/2024"))
+  print(scrape("NRW", "LST", "10/06/2024", "15:00:00", False, "", ""))
+
 
 if __name__ == "__main__":
   test_harness()
