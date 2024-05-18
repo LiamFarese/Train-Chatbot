@@ -10,8 +10,6 @@ from dateutil.relativedelta import relativedelta
 nlp = spacy.load('en_core_web_md')
 
 station_names_path = "data/stations.csv"
-time_sentences = ''
-date_sentences = ''
 
 station_codes = {}
 
@@ -24,39 +22,7 @@ with open(station_names_path) as file:
 
         station_codes[key] = value
 
-labels = []
-sentences = []
-
-doc = nlp(time_sentences)
-for sentence in doc.sents:
-    labels.append("time")
-    sentences.append(sentence.text.lower().strip())
-
-doc = nlp(date_sentences)
-for sentence in doc.sents:
-    labels.append("date")
-    sentences.append(sentence.text.lower().strip())
-
 final_chatbot = False
-# departure = None
-# destination = None
-# date = None
-# time = None
-# return_ticket = False
-
-
-def check_intention_by_keyword(sentence):
-    for word in sentence.split():
-        for type_of_intention in intentions:
-            if word.lower() in intentions[type_of_intention]["patterns"]:
-                print("BOT: " + random.choice(intentions[type_of_intention]["responses"]))
-
-                # Do not change these lines
-                if type_of_intention == 'greeting' and final_chatbot:
-                    print("BOT: We can talk about the time, date, and train tickets.\n(Hint: What time is it?)")
-                return type_of_intention
-    return None
-
 
 def convert_station_name(city):
 
@@ -128,11 +94,9 @@ def extract_entities(user_input):
 
                     departure = ent[0]
 
-
                 elif dep == "pobj" and head in ["to", "arrive", "at"]:
 
                     destination = ent[0]
-
 
     if any(token.text.lower() == "return" for token in user_input):
 
@@ -147,7 +111,6 @@ def extract_entities(user_input):
 
             time_tokens.append(token.text)
 
-
         elif token.ent_type_ == "DATE" and date is None:
 
             date = convert_date(token.text)
@@ -155,7 +118,6 @@ def extract_entities(user_input):
     time_str = ''.join(time_tokens)
     if time_str != '':
         time = convert_time(''.join(time_tokens))
-
 
     return return_ticket, time, date, departure, destination
 
@@ -330,6 +292,7 @@ class TrainBot(KnowledgeEngine):
 
             if token.ent_type_ == "TIME":
                 time_tokens.append(token.text)
+
         time_str = ''.join(time_tokens)
         if time_str != '':
             self.declare(Book(dep_time=str(convert_time(time_str))))
@@ -353,7 +316,6 @@ class TrainBot(KnowledgeEngine):
 
                     dep_date = str(convert_date(token.text))
                     break
-
 
             if dep_date is None:
 
@@ -399,7 +361,6 @@ class TrainBot(KnowledgeEngine):
                     return_date = str(convert_date(token.text))
                     break
 
-
             if return_date is not None:
 
                 if return_date < departure_date:
@@ -409,7 +370,6 @@ class TrainBot(KnowledgeEngine):
             else:
 
                 print("Sorry, that date is invalid. ")
-
 
         self.declare(Book(return_date=return_date))
 
@@ -453,8 +413,6 @@ class TrainBot(KnowledgeEngine):
 
                 print("Sorry, that time is invalid. ")
             
-
-
         self.declare(Book(return_time=return_time))
 
 

@@ -80,7 +80,7 @@ def scrape_data(response: requests.Response):
   return TicketInfo(depart_time, arrival_time, duration, delay, operator, cheapest_ticket, ticket_type)
 
 
-def scrape(destination, departure, date, time):
+def scrape(destination, departure, date, time, return_ticket, return_time, return_date):
 
   day, month, year = date.split("/")
   hour, minute, _ = time.split(":")
