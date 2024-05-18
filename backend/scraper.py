@@ -118,9 +118,11 @@ def scrape(destination :str,
     r_hour, r_minute, _  = return_time.split(":")
     return_query = ReturnQuery(r_day, r_month, r_year, r_hour, r_minute)
 
-  result, url = get_ticket_info(ticket_query, return_query)
-
-  return scrape_data(result) + f"\n\nHere is a link to book those tickets: \n{url}"
+  try:
+    result, url = get_ticket_info(ticket_query, return_query)
+    return scrape_data(result) + f"\n\nHere is a link to book those tickets: \n{url}"
+  except Exception as e:
+    return f"Sorry, I was unable to find any tickets"
 
 def test_harness():
   print(scrape("NRW", "LST", "19/05/2024", "15:00:00", True, "18:00:00", "24/05/2024"))
