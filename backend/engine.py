@@ -140,19 +140,25 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
         station_dict = pickle.load(file)
 
 
-    dep_date_dt = dt.datetime.strptime(str(dep_date), '%d/%m/%Y')
-    dep_time_dt = dt.datetime.strptime(str(dep_time), '%H:%M:%S')
+    dep_station = convert_station_name(dep_station)[0]
+    arr_station = convert_station_name(arr_station)[0]
 
-    day_of_week = dep_date_dt.weekday()
+    details, url = scrape(
+        dep_station,
+        arr_station,
+        dep_date, dep_time, False, "", "")
+
+
+    dep_dt = dt.datetime.strptime(details[0], '%Y-%m-%d %H:%M:%S')
+
+    day_of_week = dep_dt.weekday()
     day_of_year = day_of_week == 5 or 6
-    weekday     = day_of_year = dep_date_dt.timetuple().tm_yday
-    on_peak     = dep_time_dt.hour >= 9
-    hour        = on_peak = dep_time_dt.hour >= 9
+    weekday     = day_of_year = dep_dt.timetuple().tm_yday
+    on_peak     = dep_dt.hour >= 9
+    hour        = on_peak = dep_dt.hour >= 9
     first_stop  = 0
     second_stop = 0
 
-    dep_station = convert_station_name(dep_station)[0]
-    arr_station = convert_station_name(arr_station)[0]
     print(dep_station)
     print(arr_station)
 
@@ -188,13 +194,11 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
 
 
     return (
-
-        scrape(
-            dep_station,
-            arr_station,
-            dep_date, dep_time, False, "", "") +
-
-        f"\ndelay: {int(predicted_delay[0] / 60)}m")
+        f"Here is some information about your journey:\n"
+        f"departure time: {details[0]}, arrival time: {details[1]}, duration: {details[2]}, "
+        f"delay: {int(predicted_delay[0])}s\n\n"
+        f"Here is a link to book your tickets:\n"
+        f"{url}")
 
 
 class Book(Fact):
@@ -259,7 +263,7 @@ class TrainBot(KnowledgeEngine):
 
                     if station_code is not None:
 
-                        break
+                        return ent
 
 
             if multiple_found:
@@ -276,7 +280,11 @@ class TrainBot(KnowledgeEngine):
                 print("Sorry, but you cannot arrive and depart from the same station. ")
 
 
-        return station_code
+        if station_code is not None:
+
+            return city
+        else:
+            return None
 
 
     @DefFacts()
@@ -298,11 +306,15 @@ class TrainBot(KnowledgeEngine):
 
         if departure is not None:
 
-            yield Book(dep_station=departure)
+            if convert_station_name(departure)[0] is not None and convert_station_name(departure)[1] is False:
+
+                yield Book(dep_station=departure)
 
         if destination is not None:
 
-            yield Book(arr_station=destination)
+            if convert_station_name(destination)[0] is not None and convert_station_name(destination)[1] is False:
+
+                yield Book(arr_station=destination)
 
 
     # get Departure Station #
@@ -312,10 +324,12 @@ class TrainBot(KnowledgeEngine):
           NOT(Book(arr_station=W()))))
     def _get_dep_station(self):
 
-        station_code = self.clarify_station(True)
+        station_code = None
 
-        if station_code is None:
-            return
+        while station_code is None:
+
+            station_code = self.clarify_station(True)
+
 
         self.declare(Book(dep_station=station_code))
 
@@ -324,10 +338,12 @@ class TrainBot(KnowledgeEngine):
           Book(arr_station=MATCH.arr_station))
     def _get_dep_station_check_arr_station(self, arr_station):
 
-        station_code = self.clarify_station(True, arr_station)
+        station_code = None
 
-        if station_code is None:
-            return
+        while station_code is None:
+
+            station_code = self.clarify_station(True, arr_station)
+
 
         self.declare(Book(dep_station=station_code))
 
@@ -339,10 +355,12 @@ class TrainBot(KnowledgeEngine):
           NOT(Book(arr_station=W()))))
     def get_arr_station(self):
 
-        station_code = self.clarify_station(False)
+        station_code = None
 
-        if station_code is None:
-            return
+        while station_code is None:
+
+            station_code = self.clarify_station(False)
+
 
         self.declare(Book(arr_station=station_code))
 
@@ -351,10 +369,12 @@ class TrainBot(KnowledgeEngine):
           Book(dep_station=MATCH.dep_station))
     def get_arr_station_check_dep_station(self, dep_station):
 
-        station_code = self.clarify_station(False, dep_station)
+        station_code = None
 
-        if station_code is None:
-            return
+        while station_code is None:
+
+            station_code = self.clarify_station(False, dep_station)
+
 
         self.declare(Book(arr_station=station_code))
 
