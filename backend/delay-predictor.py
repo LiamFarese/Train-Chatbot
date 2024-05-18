@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import pandas as pd
-from pandas.core.interchange import dataframe
 
 import pickle
 
@@ -16,6 +15,8 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
 import datetime as dt
+
+import pickle
 
 
 # constants #
@@ -237,6 +238,7 @@ def main():
             "1. Full\n"
             "2. Extract table\n"
             "3. Train model\n"
+            "4. Save model\n"
             "9. Extract Graph\n"
             "Your Answer: "))
 
@@ -341,6 +343,24 @@ def main():
             model = BayesianRidge()
             score = train_model(data, model)
             print(f'\tScore={score}')
+
+
+        if full or option == 4:
+
+            print("Saving...")
+
+            model = RandomForestRegressor(max_depth=9, max_features=4)
+
+            with open('model.pickle', 'wb') as file:
+                pickle.dump(model, file)
+
+            print("Saved!")
+
+            with open('model.pickle', 'rb') as file:
+                model_loaded = pickle.load(file)
+
+            print("Loading worked!")
+
 
 
         if option == 9:
