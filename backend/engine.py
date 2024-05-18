@@ -1,12 +1,19 @@
+
 import json
 import csv
 import random
 import spacy
+import pickle
+import datetime as dt
+
 from experta import *
 from datetime import datetime
+
 from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
+
 from scraper import scrape
+
 
 nlp = spacy.load('en_core_web_md')
 
@@ -53,7 +60,7 @@ def convert_date(input):
     if input.lower() == "tomorrow":
 
         return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
-    
+
     elif input.lower() == "today":
         return datetime.now()
 
@@ -69,7 +76,7 @@ def convert_date(input):
 
 
 def convert_time(input):
-    
+
     time_obj = parse_date(input).time()
     return time_obj.strftime("%H:%M:%S")
 
@@ -120,6 +127,74 @@ def extract_entities(user_input):
         time = convert_time(''.join(time_tokens))
 
     return return_ticket, time, date, departure, destination
+
+
+def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
+                     return_ticket=False, return_time=None, return_date=None):
+
+    with open('model.pickle', 'rb') as file:
+        model = pickle.load(file)
+
+
+    with open('historical-data/station_dict.pkl', 'rb') as file:
+        station_dict = pickle.load(file)
+
+
+    dep_date_dt = dt.datetime.strptime(str(dep_date), '%d/%m/%Y')
+    dep_time_dt = dt.datetime.strptime(str(dep_time), '%H:%M:%S')
+
+    day_of_week = dep_date_dt.weekday()
+    day_of_year = day_of_week == 5 or 6
+    weekday     = day_of_year = dep_date_dt.timetuple().tm_yday
+    on_peak     = dep_time_dt.hour >= 9
+    hour        = on_peak = dep_time_dt.hour >= 9
+    first_stop  = 0
+    second_stop = 0
+
+    dep_station = convert_station_name(dep_station)[0]
+    arr_station = convert_station_name(arr_station)[0]
+    print(dep_station)
+    print(arr_station)
+
+    print(station_dict)
+
+    if dep_station in station_dict:
+
+        first_stop = station_dict[dep_station]
+
+
+    if arr_station in station_dict:
+
+        second_stop = station_dict[arr_station]
+
+
+    print(f"{first_stop}, {second_stop}")
+
+
+    predicted_delay = model.predict([[
+
+        0,
+        day_of_week,
+        day_of_year,
+        weekday,
+        on_peak,
+        hour,
+        first_stop,
+        second_stop]])
+
+    if return_ticket:
+
+        return_time = return_date = ""
+
+
+    return (
+
+        scrape(
+            dep_station,
+            arr_station,
+            dep_date, dep_time, False, "", "") +
+
+        f"\ndelay: {int(predicted_delay[0] / 60)}m")
 
 
 class Book(Fact):
@@ -412,7 +487,7 @@ class TrainBot(KnowledgeEngine):
             else:
 
                 print("Sorry, that time is invalid. ")
-            
+
         self.declare(Book(return_time=return_time))
 
 
@@ -426,19 +501,16 @@ class TrainBot(KnowledgeEngine):
         Book(arr_station=MATCH.arr_station),)
     def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
 
-        print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
-              f"{dep_time}? And it will be a return on {return_date} at {return_time}. "
+        print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+              f"{dep_time}? And it will be a return on {return_date} at {return_time}? "
               f"Okay lol don't need to get so worked up about it...")
-        
-        print("\n" +
-            scrape(
-                convert_station_name(dep_station)[0], 
-                convert_station_name(arr_station)[0], 
-                dep_date, dep_time, True, return_time, return_date
-                )
-            )
 
-        pass
+        print("\n\n" +
+
+            scrape_to_string(
+                convert_station_name(dep_station)[0],
+                convert_station_name(arr_station)[0],
+                dep_date, dep_time, True, return_time, return_date))
 
 
     # if every information has been filled out
@@ -450,19 +522,16 @@ class TrainBot(KnowledgeEngine):
         Book(arr_station=MATCH.arr_station),)
     def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
 
-        print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
-              f"{dep_time}? And it won't be a return. "
+        print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+              f"{dep_time}? And it will be a return on And it won't be a return? "
               f"Okay lol don't need to get so worked up about it...")
-        
-        print(
-            scrape(
-                convert_station_name(dep_station)[0], 
-                convert_station_name(arr_station)[0], 
-                dep_date, dep_time, False, "", ""
-                )
-            )
-        
-        pass
+
+        print("\n\n" +
+
+            scrape_to_string(
+                dep_station,
+                arr_station,
+                dep_date, dep_time, False, "", ""))
 
 
 # test harness to prove it works

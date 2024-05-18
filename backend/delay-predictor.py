@@ -168,7 +168,7 @@ def get_full_historical_dataset(print_progress=False):
                 on_peak = time.hour >= 9
 
                 # get first and second stop
-                first_stop = previous_row['tpl']
+                first_stop = previous_row['tpl'][0:3]
 
                 if first_stop not in station_dict:
 
@@ -177,7 +177,7 @@ def get_full_historical_dataset(print_progress=False):
 
 
                 # get first and second stop
-                second_stop = row['tpl']
+                second_stop = row['tpl'][0:3]
 
                 if second_stop not in station_dict:
                     # index station as next possible + 1
@@ -237,8 +237,8 @@ def main():
             "0. Exit\n"
             "1. Full\n"
             "2. Extract table\n"
-            "3. Train model\n"
-            "4. Save model\n"
+            "3. Save model\n"
+            "8. Train model\n"
             "9. Extract Graph\n"
             "Your Answer: "))
 
@@ -269,7 +269,7 @@ def main():
                 print(station_dict)
 
 
-        if full or option == 3:
+        if option == 8:
 
             print('Testing Random Forest Regressor')
 
@@ -345,7 +345,7 @@ def main():
             print(f'\tScore={score}')
 
 
-        if full or option == 4:
+        if full or option == 3:
 
             print("Saving...")
 
@@ -354,7 +354,7 @@ def main():
             X = data[data.columns.drop('delay')]
             y = data['delay']
 
-            model.fit(X, y)
+            model.fit(X.values, y)
 
             with open('model.pickle', 'wb') as file:
                 pickle.dump(model, file)
