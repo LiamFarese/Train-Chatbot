@@ -351,6 +351,11 @@ def main():
 
             model = RandomForestRegressor(max_depth=9, max_features=4)
 
+            X = data[data.columns.drop('delay')]
+            y = data['delay']
+
+            model.fit(X, y)
+
             with open('model.pickle', 'wb') as file:
                 pickle.dump(model, file)
 
