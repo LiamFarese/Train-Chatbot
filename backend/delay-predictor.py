@@ -81,7 +81,7 @@ def get_full_historical_dataset(print_progress=False):
     data = {
 
         'delay': [],
-        'departure_delay': [],
+        #'departure_delay': [],
         'day_of_week': [],
         'day_of_year': [],
         'weekday': [],
@@ -184,7 +184,7 @@ def get_full_historical_dataset(print_progress=False):
 
 
                 data['delay']           .append(delay)
-                data['departure_delay'] .append(departure_delay)
+                #data['departure_delay'] .append(departure_delay)
 
                 data['day_of_week']     .append(day_of_week)
                 data['day_of_year']     .append(day_of_year)
@@ -236,7 +236,8 @@ def main():
             "0. Exit\n"
             "1. Full\n"
             "2. Extract table\n"
-            "3. Train model\n"
+            "3. Save model\n"
+            "8. Train model\n"
             "9. Extract Graph\n"
             "Your Answer: "))
 
@@ -267,7 +268,7 @@ def main():
                 print(station_dict)
 
 
-        if full or option == 3:
+        if full or option == 8:
 
             print('Testing Decision Tree Regressor')
 
@@ -289,49 +290,6 @@ def main():
                 print(f'\tmax_features={i}, score={score}')
 
 
-            print('Testing Random Forest Regressor')
-
-<<<<<<< Updated upstream
-            model = RandomForestRegressor(max_depth=9, max_features=4)
-=======
-            model = RandomForestRegressor(max_depth=None, max_features=None)
-            score = train_model(data, model)
-            print(f'\tmax_depth=None, max_features=None, score={score}')
-
-            model = RandomForestRegressor(max_depth=None, max_features=7)
-            score = train_model(data, model)
-            print(f'\tmax_depth=None, max_features=7, score={score}')
-
-            model = RandomForestRegressor(max_depth=18, max_features=6)
->>>>>>> Stashed changes
-            score = train_model(data, model)
-            print(f'\tmax_depth=18, max_features=6, score={score}')
-
-
-<<<<<<< Updated upstream
-            print('Testing Decision Tree Regressor')
-
-            model = DecisionTreeRegressor()
-            score = train_model(data, model)
-            print(f'\tmax_depth=None, score={score}')
-
-            for i in range(5, 15):
-
-                model = DecisionTreeRegressor(max_depth=i)
-                score = train_model(data, model)
-                print(f'\tmax_depth={i}, score={score}')
-
-
-            for i in range(1, 10):
-
-                model = DecisionTreeRegressor(max_features=i)
-                score = train_model(data, model)
-                print(f'\tmax_features={i}, score={score}')
-
-
-            print('Testing Ada Boost Regressor')
-
-=======
             print('Testing Ada Boost Regressor')
 
             for i in range(10, 20):
@@ -342,7 +300,6 @@ def main():
                 print(f'\tmax_depth={i}, max_features={6}, score={score}')
 
 
->>>>>>> Stashed changes
             estimator = DecisionTreeRegressor()
             model = AdaBoostRegressor(estimator=estimator, random_state=seed)
             score = train_model(data, model)
@@ -358,7 +315,7 @@ def main():
             score = train_model(data, model)
             print(f'\tmax_depth=9, max_features=None, score={score}')
 
-<<<<<<< Updated upstream
+
             for i in range(3, 6):
 
                 estimator = DecisionTreeRegressor(max_depth=None, max_features=i)
@@ -369,13 +326,7 @@ def main():
 
             print('Testing knn')
 
-            for i in range(20, 30):
-=======
-
-            print('Testing knn')
-
             for i in range(5, 13):
->>>>>>> Stashed changes
 
                 model = KNeighborsRegressor(n_neighbors=i, n_jobs=-1)
                 score = train_model(data, model)
@@ -395,8 +346,6 @@ def main():
             print(f'\tScore={score}')
 
 
-<<<<<<< Updated upstream
-=======
         if full or option == 3:
 
             print("Saving...")
@@ -420,7 +369,6 @@ def main():
 
 
 
->>>>>>> Stashed changes
         if option == 9:
 
             averages = []
