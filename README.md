@@ -8,13 +8,10 @@ npm install
 npx expo start
 ```
 
-Backend Prerequisites (use "pip install {PACKAGE NAME}"):
+Backend Prerequisites:
 
 ```
-fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
+pip install -r requirements.txt
 ```
 
 Starting the backend:

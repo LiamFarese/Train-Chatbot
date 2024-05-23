@@ -147,7 +147,6 @@ def startSession(user_ID: str, db: db_dependency):
     )
     
     #* Add newly created session data to database
-    #sessions[session_ID] = session_data
     db_session = models.Session(session_id=session_data.session_ID, chat_history=session_data.chat_hist, 
                                 timestamp=session_data.timestamp, user_id=session_data.user_ID, 
                                 session_active=session_data.session_active)
