@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Help from "./help";
 import Button from "../components/button";
 
@@ -16,6 +16,7 @@ export default function Chat() {
     // const [youAreLastSender, setYouAreLastSender] = useState(false)
     const [currentTyping, setCurrentTyping] = useState(null)
     const [currentModal, setCurrentModal] = useState(null);
+    const [socket, setSocket] = useState(null);
 
     // alternates between 'owner' and 'you', owner being first
     const [messages, setMessages] = useState([
@@ -49,9 +50,42 @@ export default function Chat() {
 
     // References //
 
-    const textInput = useRef()
-    const scrollView = useRef()
+    const textInput = useRef();
+    const scrollView = useRef();
 
+
+    useEffect(() => {
+        var ws = new WebSocket("ws://127.0.0.1:8000/ws");
+        
+        ws.onopen = () => {
+            console.log("Connected to WebSocket")
+        }
+        
+        ws.onmessage = (event) => {
+            console.log(event.data)
+            setMessages((previous_messages) => {
+                console.log(previous_messages)
+                return [...previous_messages, event.data];
+            });
+            console.log(messages)
+        };
+        
+        ws.onerror = (error) => {
+            console.log(`WebSocket error: ${error}`);
+        };
+
+        ws.onclose = () => {
+            console.log("WebSocket connection closed");
+        };
+
+        setSocket(ws);
+
+        return () => {
+            ws.close();
+        };
+    }, []);
+
+    
 
     // Functions //
 
@@ -62,6 +96,8 @@ export default function Chat() {
         you = true;
 
         messages.forEach((message) => {
+
+            //console.log(message)
     
             messageBlocks.push(
                 
@@ -83,7 +119,7 @@ export default function Chat() {
     // for submitting the message to the chatbot
     // edit when this functionality has been added
     const submitMessage = async () => {
-
+        
         // close function if message is invalid
         if (currentTyping == null || currentTyping == ''
             || currentTyping == undefined) return
@@ -93,21 +129,25 @@ export default function Chat() {
 
         newMessages = [...messages]
 
-        newMessages.push([currentTyping])
+        newMessages.push(currentTyping)
         setMessages(newMessages)
 
+
         // add code here //
-        try {
-            const response = await axios.post('http://localhost:8000/user/send-chat/', {
-              currentTyping,
-            });
-            console.log(response)
-            newMessages.push([response.data.message])
-            setMessages(newMessages)
-        } catch (error) {
-            console.error('Error sending message:', error);
-        };
-        setCurrentTyping(null)
+        // try {
+        //     const response = await axios.post('http://localhost:8000/user/send-chat/', {
+        //       currentTyping,
+        //     });
+        //     console.log(response)
+        //     newMessages.push([response.data.message])
+        //     setMessages(newMessages)
+        // } catch (error) {
+        //     console.error('Error sending message:', error);
+        // };
+        
+        
+        socket.send(currentTyping);
+        setCurrentTyping(null);
 
     }
 

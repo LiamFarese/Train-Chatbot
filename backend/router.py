@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Path, Request, Response, Depends
+from fastapi import FastAPI, HTTPException, status, Request, Response, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,21 +17,24 @@ import models
 app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
 
-#* temporary db
-sessions = {}
 
-origins = [
-    "http://localhost:8081", 
-    "localhost:8081"
-]
+class ConnenctionManager:
+    def __init__(self):
+        self.active_connections : list[WebSocket] = []
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+        
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
 
 class SessionBody(BaseModel):
     session_ID: str
@@ -49,13 +52,14 @@ def getDb():
 
 db_dependency = Annotated[Session, Depends(getDb)]
 
+manager = ConnenctionManager
+
 def saveResponse(response: str):
     #TODO: Add logic to save response to db
     pass
 
 def generateResponse(user_message: str):
-    #TODO: Add response generation logic
-    pass
+    return "Response from Backend"
 
 @app.get("/user/ID")
 def getUserID(request: Request):
@@ -226,3 +230,52 @@ def resetSession(session_ID: str, db: db_dependency):
     db.refresh(session)
     
     return {"message": "Session reset successfully"}
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, db: db_dependency):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            
+            #TODO Validate "data" before parsing it
+            user_message = data
+            
+            #* Find active session for the user
+            # session = db.query(models.Session).filter(models.Session.user_id == user_ID, models.Session.session_active == True).first()
+            
+            # if not session:
+            #     await websocket.send_text("No active session found")
+            #     continue
+            
+            # new_timestamp = datetime.now().isoformat()
+            # session.chat_history.append({
+            #     "user": True,
+            #     "message": user_message,
+            #     "timestamp": new_timestamp
+            # })
+
+            # #* Update session with new message
+            # db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': session.chat_history, 'timestamp': new_timestamp})
+            # db.commit()
+            # db.refresh(session)
+            
+            #* Generate a response
+            model_response = generateResponse(user_message)
+            
+            # session.chat_history.append({
+            #     "user": False,
+            #     "message": model_response,
+            #     "timestamp": new_timestamp
+            # })
+
+            # db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': session.chat_history, 'timestamp': new_timestamp})
+            # db.commit()
+            # db.refresh(session)
+            
+            #* Send the bot response to the client
+            await websocket.send_text(model_response)
+    except WebSocketDisconnect:
+        websocket.close
+    except Exception as e:
+        print(e)
