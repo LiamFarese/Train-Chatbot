@@ -6,26 +6,11 @@ from experta import *
 from datetime import datetime
 from dateutil.parser import parse as parse_date
 from dateutil.relativedelta import relativedelta
+from scraper import scrape
 
 nlp = spacy.load('en_core_web_md')
 
-intentions_path = "data/intentions.json"
-sentences_path = "data/sentences.txt"
 station_names_path = "data/stations.csv"
-time_sentences = ''
-date_sentences = ''
-
-with open(intentions_path) as f:
-    intentions = json.load(f)
-
-with open(sentences_path) as file:
-    for line in file:
-        parts = line.split(' | ')
-        if parts[0] == 'time':
-            time_sentences = time_sentences + ' ' + parts[1].strip()
-        elif parts[0] == 'date':
-            date_sentences = date_sentences + ' ' + parts[1].strip()
-
 
 station_codes = {}
 
@@ -38,39 +23,7 @@ with open(station_names_path) as file:
 
         station_codes[key] = value
 
-labels = []
-sentences = []
-
-doc = nlp(time_sentences)
-for sentence in doc.sents:
-    labels.append("time")
-    sentences.append(sentence.text.lower().strip())
-
-doc = nlp(date_sentences)
-for sentence in doc.sents:
-    labels.append("date")
-    sentences.append(sentence.text.lower().strip())
-
 final_chatbot = False
-# departure = None
-# destination = None
-# date = None
-# time = None
-# return_ticket = False
-
-
-def check_intention_by_keyword(sentence):
-    for word in sentence.split():
-        for type_of_intention in intentions:
-            if word.lower() in intentions[type_of_intention]["patterns"]:
-                print("BOT: " + random.choice(intentions[type_of_intention]["responses"]))
-
-                # Do not change these lines
-                if type_of_intention == 'greeting' and final_chatbot:
-                    print("BOT: We can talk about the time, date, and train tickets.\n(Hint: What time is it?)")
-                return type_of_intention
-    return None
-
 
 def convert_station_name(city):
 
@@ -87,11 +40,8 @@ def convert_station_name(city):
 
             multiple_found = True
             station_code = stations_with_city
-
         else:
-
             station_code = None
-
 
     return station_code, multiple_found
 
@@ -103,9 +53,9 @@ def convert_date(input):
     if input.lower() == "tomorrow":
 
         return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
+
     elif input.lower() == "today":
         return datetime.now()
-
 
     elif input.lower() in days_of_the_week:
 
@@ -144,16 +94,15 @@ def extract_entities(user_input):
 
                     departure = ent[0]
 
-
                 elif dep == "pobj" and head in ["to", "arrive", "at"]:
 
                     destination = ent[0]
-
 
     if any(token.text.lower() == "return" for token in user_input):
 
         return_ticket = True
 
+        
     time_tokens = []
     # Extract time and date
     for token in user_input:
@@ -171,63 +120,90 @@ def extract_entities(user_input):
     if time_str != '':
         time = convert_time(''.join(time_tokens))
 
-
     return return_ticket, time, date, departure, destination
-
-
-def clarify_station(is_departure):
-
-    station_code = None
-    multiple_found = True
-
-    # get words to say in print so arrival and departure can be unified
-    word = "departure" if is_departure else "arrival"
-    ing = "departing" if is_departure else "arriving"
-
-    while station_code is None or multiple_found:
-
-        city = input(f"Sorry, we didn't get the station of {word}. Which station will you be {ing} from?\n\t")
-
-        station_code, multiple_found = convert_station_name(city)
-
-        # if the user has not used a one word answer
-        if station_code is None:
-
-            for ent in nlp(city).ents:
-
-                station_code, multiple_found = convert_station_name(ent.text)
-
-                if station_code is not None:
-
-                    break
-
-
-        if multiple_found:
-
-            print(f"Which station in {city}?...\n")
-
-            for code in station_code:
-
-                print(f"- {code}?")
-
-
-    return station_code
 
 
 class Book(Fact):
 
     """
-    return_ticket = Return Ticket
     dep_station = Departure Station
     arr_station = Arrival Station
     dep_date = Departure Date
     dep_time = Departure Time
+
+    return_ticket = Return Ticket
+    return_date = Return Date
+    return_time = Return Time
     """
 
     pass
 
 
 class TrainBot(KnowledgeEngine):
+
+    # if the user types "undo", delete the last fact
+    def check_undo(self, user_input):
+
+        user_input = user_input.lower()
+
+        if "undo" in user_input:
+
+            remove_key = list(self.facts.keys())[-1]
+            remove_fact = self.facts[remove_key]
+            self.retract(remove_fact)
+            print(self.facts)
+            return True
+
+        # unsuccessful
+        return False
+
+
+    # station clarification used in multiple functions
+    def clarify_station(self, is_departure, other_station=None):
+
+        station_code = None
+        multiple_found = True
+
+        # get words to say in print so arrival and departure can be unified
+        ing = "departing" if is_departure else "arriving"
+
+        while station_code is None or multiple_found or station_code == other_station:
+
+            city = input(f"Which station will you be {ing} from?\n\t")
+
+            if self.check_undo(city):
+                return None
+
+            station_code, multiple_found = convert_station_name(city)
+
+            # if the user has not used a one word answer
+            if station_code is None:
+
+                for ent in nlp(city).ents:
+
+                    station_code, multiple_found = convert_station_name(ent.text)
+
+                    if station_code is not None:
+
+                        break
+
+
+            if multiple_found:
+
+                print(f"Which station in {city}?...\n")
+
+                for code in station_code:
+
+                    print(f"- {code}?")
+
+
+            if station_code == other_station:
+
+                print("Sorry, but you cannot arrive and depart from the same station. ")
+
+
+        return station_code
+
 
     @DefFacts()
     def _initial_action(self):
@@ -255,29 +231,69 @@ class TrainBot(KnowledgeEngine):
             yield Book(arr_station=destination)
 
 
-    @Rule(NOT(Book(dep_station=W())))
+    # get Departure Station #
+
+
+    @Rule(AND(NOT(Book(dep_station=W())),
+          NOT(Book(arr_station=W()))))
     def _get_dep_station(self):
 
-        station_code = clarify_station(True)
+        station_code = self.clarify_station(True)
+
+        if station_code is None:
+            return
 
         self.declare(Book(dep_station=station_code))
 
 
-    @Rule(NOT(Book(arr_station=W())))
+    @Rule(NOT(Book(dep_station=W())),
+          Book(arr_station=MATCH.arr_station))
+    def _get_dep_station_check_arr_station(self, arr_station):
+
+        station_code = self.clarify_station(True, arr_station)
+
+        if station_code is None:
+            return
+
+        self.declare(Book(dep_station=station_code))
+
+
+    # get Arrival Station #
+
+
+    @Rule(AND(NOT(Book(dep_station=W())),
+          NOT(Book(arr_station=W()))))
     def get_arr_station(self):
 
-        station_code = clarify_station(False)
+        station_code = self.clarify_station(False)
+
+        if station_code is None:
+            return
+
+        self.declare(Book(arr_station=station_code))
+
+
+    @Rule(NOT(Book(arr_station=W())),
+          Book(dep_station=MATCH.dep_station))
+    def get_arr_station_check_dep_station(self, dep_station):
+
+        station_code = self.clarify_station(False, dep_station)
+
+        if station_code is None:
+            return
 
         self.declare(Book(arr_station=station_code))
 
 
     @Rule(NOT(Book(dep_time=W())))
     def get_dep_time(self):
+      
         time_tokens = []
         for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
 
             if token.ent_type_ == "TIME":
                 time_tokens.append(token.text)
+                
         time_str = ''.join(time_tokens)
         if time_str != '':
             self.declare(Book(dep_time=str(convert_time(time_str))))
@@ -286,39 +302,167 @@ class TrainBot(KnowledgeEngine):
     @Rule(NOT(Book(dep_date=W())))
     def get_dep_date(self):
 
-        for token in nlp(input("Sorry, we didn't get the date. What day will you be departing?\n\t")):
+        dep_date = None
 
-            if token.ent_type_ == "DATE":
+        while dep_date is None:
 
-                self.declare(Book(dep_date=str(convert_date(token.text))))
-                break
+            user_input = input("What date will you be departing?\n\t")
+
+            if self.check_undo(user_input):
+                return
+
+            for token in nlp(user_input):
+
+                if token.ent_type_ == "DATE":
+
+                    dep_date = str(convert_date(token.text))
+                    break
+
+            if dep_date is None:
+
+                print("Sorry, that date is invalid. ")
+
+
+        self.declare(Book(dep_date=dep_date))
 
 
     @Rule(NOT(Book(return_ticket=W())))
     def get_return(self):
 
-        answer = input("Will you be returning? (yes or no)\n\t").lower()
+        user_input = input("Will you be returning? (yes or no)\n\t").lower()
 
-        return_ticket = "yes" in answer or "will be" in answer
+        if self.check_undo(user_input):
+            return
+
+        return_ticket = "yes" in user_input or "will be" in user_input
 
         self.declare(Book(return_ticket=return_ticket))
 
 
+    @Rule(
+        Book(return_ticket=True),
+        Book(dep_date=MATCH.dep_date),
+        NOT(Book(return_date=W())))
+    def get_return_date(self, dep_date):
+
+        return_date = None
+        departure_date = convert_date(dep_date)
+
+        while return_date is None:
+
+            user_input = input("What date will you be returning?\n\t")
+
+            if self.check_undo(user_input):
+                return
+
+            for token in nlp(user_input):
+
+                if token.ent_type_ == "DATE":
+
+                    return_date = str(convert_date(token.text))
+                    break
+
+            if return_date is not None:
+
+                if return_date < departure_date:
+
+                    print("Sorry, the return date cannot be before the departure date. ")
+                    return_date = None
+            else:
+
+                print("Sorry, that date is invalid. ")
+
+        self.declare(Book(return_date=return_date))
+
+
+    # cannot occur without the date being set
+    @Rule(
+        Book(return_ticket=True),
+        Book(return_date=MATCH.return_date),
+        Book(dep_date=MATCH.dep_date),
+        Book(dep_time=MATCH.dep_time),
+        NOT(Book(return_time=W())))
+    def get_return_time(self, return_date, dep_date, dep_time):
+
+        return_time = None
+        check_time = return_date == dep_date
+        departure_time = convert_time(dep_time)
+
+        while return_time is None:
+
+            user_input = input("What time will you depart for your return?\n\t")
+
+            if self.check_undo(user_input):
+                return
+
+            time_tokens = []
+            for token in nlp(user_input):
+
+                if token.ent_type_ == "TIME":
+                    time_tokens.append(token.text)
+                    time_str = ''.join(time_tokens)
+                if time_str != '':
+                    return_time = time_str
+
+            if return_time is not None:
+
+                if check_time and return_time <= departure_time:
+
+                    print("Sorry, the return time cannot be before the departure time if they are on the same day. ")
+                    return_time = None
+            else:
+
+                print("Sorry, that time is invalid. ")
+            
+        self.declare(Book(return_time=return_time))
+
+
     # if every information has been filled out
     @Rule(
-        Book(return_ticket=MATCH.return_ticket),
+        Book(return_time=MATCH.return_time),
+        Book(return_date=MATCH.return_date),
         Book(dep_time=MATCH.dep_time),
         Book(dep_date=MATCH.dep_date),
         Book(dep_station=MATCH.dep_station),
         Book(arr_station=MATCH.arr_station),)
-    def success(self, dep_station, arr_station, dep_date, dep_time, return_ticket):
-
-        return_string = "will" if return_ticket else "won't"
+    def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
 
         print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
-              f"{dep_time}? And it {return_string} be a return. "
+              f"{dep_time}? And it will be a return on {return_date} at {return_time}. "
               f"Okay lol don't need to get so worked up about it...")
+        
+        print("\n" +
+            scrape(
+                convert_station_name(dep_station)[0], 
+                convert_station_name(arr_station)[0], 
+                dep_date, dep_time, True, return_time, return_date
+                )
+            )
 
+        pass
+
+
+    # if every information has been filled out
+    @Rule(
+        Book(return_ticket=False),
+        Book(dep_time=MATCH.dep_time),
+        Book(dep_date=MATCH.dep_date),
+        Book(dep_station=MATCH.dep_station),
+        Book(arr_station=MATCH.arr_station),)
+    def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
+
+        print(f"So you will be departing from {dep_station} and arriving at {arr_station} on {dep_date} at "
+              f"{dep_time}? And it won't be a return. "
+              f"Okay lol don't need to get so worked up about it...")
+        
+        print(
+            scrape(
+                convert_station_name(dep_station)[0], 
+                convert_station_name(arr_station)[0], 
+                dep_date, dep_time, False, "", ""
+                )
+            )
+        
         pass
 
 

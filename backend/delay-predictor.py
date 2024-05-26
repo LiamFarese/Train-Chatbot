@@ -81,14 +81,14 @@ def get_full_historical_dataset(print_progress=False):
     data = {
 
         'delay': [],
-        'departure_delay': [],
+        #'departure_delay': [],
         'day_of_week': [],
         'day_of_year': [],
         'weekday': [],
         'on_peak': [],
         'hour': [],
-        'first_stop': [],
-        'second_stop': [],
+        #'first_stop': [],
+        #'second_stop': [],
     }
 
     station_dict = {}
@@ -184,7 +184,7 @@ def get_full_historical_dataset(print_progress=False):
 
 
                 data['delay']           .append(delay)
-                data['departure_delay'] .append(departure_delay)
+                #data['departure_delay'] .append(departure_delay)
 
                 data['day_of_week']     .append(day_of_week)
                 data['day_of_year']     .append(day_of_year)
@@ -193,8 +193,8 @@ def get_full_historical_dataset(print_progress=False):
                 data['on_peak']         .append(int(on_peak))
                 data['hour']            .append(time.hour)
 
-                data['first_stop']     .append(station_dict[first_stop])
-                data['second_stop']     .append(station_dict[second_stop])
+                #data['first_stop']     .append(station_dict[first_stop])
+                #data['second_stop']     .append(station_dict[second_stop])
 
                 previous_row = row
 
@@ -236,7 +236,8 @@ def main():
             "0. Exit\n"
             "1. Full\n"
             "2. Extract table\n"
-            "3. Train model\n"
+            "3. Save model\n"
+            "8. Train model\n"
             "9. Extract Graph\n"
             "Your Answer: "))
 
@@ -267,14 +268,7 @@ def main():
                 print(station_dict)
 
 
-        if full or option == 3:
-
-            print('Testing Random Forest Regressor')
-
-            model = RandomForestRegressor(max_depth=9, max_features=4)
-            score = train_model(data, model)
-            print(f'\tscore={score}')
-
+        if full or option == 8:
 
             print('Testing Decision Tree Regressor')
 
@@ -282,14 +276,14 @@ def main():
             score = train_model(data, model)
             print(f'\tmax_depth=None, score={score}')
 
-            for i in range(5, 15):
+            for i in range(1, 30):
 
                 model = DecisionTreeRegressor(max_depth=i)
                 score = train_model(data, model)
                 print(f'\tmax_depth={i}, score={score}')
 
 
-            for i in range(1, 10):
+            for i in range(1, 30):
 
                 model = DecisionTreeRegressor(max_features=i)
                 score = train_model(data, model)
@@ -297,6 +291,14 @@ def main():
 
 
             print('Testing Ada Boost Regressor')
+
+            for i in range(10, 20):
+
+                estimator = DecisionTreeRegressor(max_depth=i, max_features=6)
+                model = AdaBoostRegressor(estimator=estimator, random_state=seed)
+                score = train_model(data, model)
+                print(f'\tmax_depth={i}, max_features={6}, score={score}')
+
 
             estimator = DecisionTreeRegressor()
             model = AdaBoostRegressor(estimator=estimator, random_state=seed)
@@ -313,6 +315,7 @@ def main():
             score = train_model(data, model)
             print(f'\tmax_depth=9, max_features=None, score={score}')
 
+
             for i in range(3, 6):
 
                 estimator = DecisionTreeRegressor(max_depth=None, max_features=i)
@@ -323,7 +326,7 @@ def main():
 
             print('Testing knn')
 
-            for i in range(20, 30):
+            for i in range(5, 13):
 
                 model = KNeighborsRegressor(n_neighbors=i, n_jobs=-1)
                 score = train_model(data, model)
@@ -341,6 +344,29 @@ def main():
             model = BayesianRidge()
             score = train_model(data, model)
             print(f'\tScore={score}')
+
+
+        if full or option == 3:
+
+            print("Saving...")
+
+            model = DecisionTreeRegressor(max_depth=None, max_features=None)
+
+            X = data[data.columns.drop('delay')]
+            y = data['delay']
+
+            model.fit(X.values, y)
+
+            with open('model.pickle', 'wb') as file:
+                pickle.dump(model, file)
+
+            print("Saved!")
+
+            with open('model.pickle', 'rb') as file:
+                model_loaded = pickle.load(file)
+
+            print("Loading worked!")
+
 
 
         if option == 9:
