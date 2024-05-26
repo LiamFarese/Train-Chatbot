@@ -157,6 +157,7 @@ export default function Chat() {
                     <Button
 
                         onPress={() => setCurrentModal('Help')}
+                        primary={true}
                     >
                         Help
 
