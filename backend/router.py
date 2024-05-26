@@ -1,9 +1,5 @@
 from fastapi import FastAPI, HTTPException, status, Request, Response, Depends, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
-from fastapi.middleware.cors import CORSMiddleware
 
-from typing import List, Annotated
 from pydantic import BaseModel
 from datetime import datetime
 import uuid
@@ -50,7 +46,7 @@ def getDb():
     finally:
         db.close()
 
-db_dependency = Annotated[Session, Depends(getDb)]
+db_dependency = Depends(getDb)
 
 manager = ConnenctionManager
 
@@ -78,7 +74,7 @@ def getUserID(request: Request):
 
 
 @app.post("/user/send-chat/")
-def chat(session_ID: str, user_message: str, db: db_dependency):
+def chat(session_ID: str, user_message: str, db: Session = db_dependency):
     
     session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
@@ -112,7 +108,7 @@ def chat(session_ID: str, user_message: str, db: db_dependency):
     return {"message": "Message recieved and processed successfully"}
 
 @app.get("/session")
-def getSession(db: db_dependency):
+def getSession(db: Session = db_dependency):
     #* Checks for the latest session that is still active
     session = db.query(models.Session).filter(models.Session.session_active == True).first()
     
@@ -125,7 +121,7 @@ def getSession(db: db_dependency):
     return {"message": "Session found", "data": session}
 
 @app.get("/session/{session_ID}")
-def getSession(session_ID: str, db: db_dependency):
+def getSession(session_ID: str, db: Session = db_dependency):
     #* Query the database for a session by session ID
     session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
@@ -136,7 +132,7 @@ def getSession(session_ID: str, db: db_dependency):
     return {"message": "Session found", "data": session}
 
 @app.post("/session/start/")
-def startSession(user_ID: str, db: db_dependency):
+def startSession(user_ID: str, db: Session = db_dependency):
     
     #* Generate unique session ID
     session_ID = f"{user_ID}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -162,7 +158,7 @@ def startSession(user_ID: str, db: db_dependency):
     return {"message": "Session started successfully", "session_ID": session_ID}
 
 @app.post("/session/end/")
-def endSession(db: db_dependency):
+def endSession(db: Session = db_dependency):
     #* Get the latest active session
     session = db.query(models.Session).filter(models.Session.session_active == True).first()
     
@@ -178,7 +174,7 @@ def endSession(db: db_dependency):
     return {"message": "Session ended successfully"}
 
 @app.post("/session/end/{session_ID}")
-def endSession(session_ID: str, db: db_dependency):
+def endSession(session_ID: str, db: Session = db_dependency):
     #* Get session by session ID
     session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
@@ -194,7 +190,7 @@ def endSession(session_ID: str, db: db_dependency):
     return {"message": "Session ended successfully"}
 
 @app.post("/session/reset/")
-def resetSession(db: db_dependency):
+def resetSession(db: Session = db_dependency):
     #* Get the latest active session
     session = db.query(models.Session).filter(models.Session.session_active == True).first()
     
@@ -213,7 +209,7 @@ def resetSession(db: db_dependency):
     
     
 @app.post("/session/reset/{session_ID}")
-def resetSession(session_ID: str, db: db_dependency):
+def resetSession(session_ID: str, db: Session = db_dependency):
     #* Get session by session ID
     session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
@@ -232,7 +228,7 @@ def resetSession(session_ID: str, db: db_dependency):
     return {"message": "Session reset successfully"}
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, db: db_dependency):
+async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
