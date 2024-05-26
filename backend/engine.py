@@ -107,10 +107,10 @@ def extract_entities(user_input):
 
     if any((token.text.lower() == ("return" or "yes"))for token in user_input):
         return_ticket = True
-    
+
     if any((token.text.lower() == "no" )for token in user_input):
         return_ticket = False
-        
+
     time_tokens = []
     # Extract time and date
     for token in user_input:
@@ -216,16 +216,22 @@ class Book(Fact):
     """
 
     pass
-        
+
+
 class TrainBot(KnowledgeEngine):
+
     def __init__(self):
+
         super().__init__()
         self.response = None
+        self.fact_string = None
+
 
     def run_with_response(self):
+
         self.response = None
         self.run()
-        return self.response
+        return self.response, self.fact_string
 
     # if the user types "undo", delete the last fact
     def check_undo(self, user_input):
@@ -295,11 +301,16 @@ class TrainBot(KnowledgeEngine):
             return None
 
 
-    @Rule(AND(NOT(Book(dep_station=W())),
-          NOT(Book(arr_station=W()))))
-    def _get_dep_station(self):
+    #@Rule(AND(NOT(Book(dep_station=W())),
+    #      NOT(Book(arr_station=W()))))
+    @Rule(NOT(Book(dep_station=W())))
+    def get_dep_station(self):
+
         if self.response is None:
+
+            print(self.facts)
             self.response = "Which station will you be departing from?"
+            self.fact_string = "from"
         # station_code = None
 
         # while station_code is None:
@@ -310,28 +321,34 @@ class TrainBot(KnowledgeEngine):
         # self.declare(Book(dep_station=station_code))
 
 
-    @Rule(NOT(Book(dep_station=W())),
-          Book(arr_station=MATCH.arr_station))
-    def _get_dep_station_check_arr_station(self, arr_station):
-
-        station_code = None
-
-        while station_code is None:
-
-            station_code = self.clarify_station(True, arr_station)
-
-
-        self.declare(Book(dep_station=station_code))
+    #@Rule(NOT(Book(dep_station=W())),
+    #      Book(arr_station=MATCH.arr_station))
+    #def _get_dep_station_check_arr_station(self, arr_station):
+#
+    #    station_code = None
+#
+    #    while station_code is None:
+#
+    #        station_code = self.clarify_station(True, arr_station)
+#
+#
+    #    self.declare(Book(dep_station=station_code))
 
 
     # get Arrival Station #
 
 
-    @Rule(AND(NOT(Book(dep_station=W())),
-          NOT(Book(arr_station=W()))))
+    #@Rule(AND(NOT(Book(dep_station=W())),
+    #      NOT(Book(arr_station=W()))))
+    @Rule(NOT(Book(arr_station=W())))
     def get_arr_station(self):
+
         if self.response is None:
-            self.response = "Which station will you be arriving at?"
+
+            print(self.facts)
+            self.response = "Which station will you be arriving to?"
+            self.fact_string = "to"
+
         # station_code = None
 
         # while station_code is None:
@@ -342,158 +359,304 @@ class TrainBot(KnowledgeEngine):
         # self.declare(Book(arr_station=station_code))
 
 
-    @Rule(NOT(Book(arr_station=W())),
-          Book(dep_station=MATCH.dep_station))
-    def get_arr_station_check_dep_station(self, dep_station):
-
-        station_code = None
-
-        while station_code is None:
-
-            station_code = self.clarify_station(False, dep_station)
-
-
-        self.declare(Book(arr_station=station_code))
+    #@Rule(NOT(Book(arr_station=W())),
+    #      Book(dep_station=MATCH.dep_station))
+    #def get_arr_station_check_dep_station(self, dep_station):
+#
+    #    station_code = None
+#
+    #    while station_code is None:
+#
+    #        station_code = self.clarify_station(False, dep_station)
+#
+#
+    #    self.declare(Book(arr_station=station_code))
 
 
     @Rule(NOT(Book(dep_time=W())))
     def get_dep_time(self):
+
         if self.response is None:
+
+            print(self.facts)
             self.response = "Sorry, we didn't get the time. What time will you be departing?\n\t"
+            self.fact_string = "at"
+
 
     @Rule(NOT(Book(dep_date=W())))
     def get_dep_date(self):
+
         if self.response is None:
+
+            print(self.facts)
             self.response = "What date will you be departing?\n\t"
+            self.fact_string = "on"
 
-    @Rule(NOT(Book(return_ticket=W())))
-    def get_return(self):
-        if self.response is None:
-            self.response = "Will you be returning? (yes or no)\n\t"
 
-    @Rule(
-        Book(return_ticket=True),
-        Book(dep_date=MATCH.dep_date),
-        NOT(Book(return_date=W())))
-    def get_return_date(self, dep_date):
-        if self.response is None:
-            self.response = "What date will you be returning?\n\t"
+    #@Rule(NOT(Book(return_ticket=W())))
+    #def get_return(self):
+    #    if self.response is None:
+    #        self.response = "Will you be returning? (yes or no)\n\t"
+
+    #@Rule(
+    #    Book(return_ticket=True),
+    #    Book(dep_date=MATCH.dep_date),
+    #    NOT(Book(return_date=W())))
+    #def get_return_date(self, dep_date):
+#
+    #    if self.response is None:
+#
+    #        self.response = "What date will you be returning?\n\t"
 
 
     # cannot occur without the date being set
-    @Rule(
-        Book(return_ticket=True),
-        Book(return_date=MATCH.return_date),
-        Book(dep_date=MATCH.dep_date),
-        Book(dep_time=MATCH.dep_time),
-        NOT(Book(return_time=W())))
-    def get_return_time(self, return_date, dep_date, dep_time):
-        if self.response is None:
-            self.response = "What time will you depart for your return?\n\t"
+    #@Rule(
+    #    Book(return_ticket=True),
+    #    Book(return_date=MATCH.return_date),
+    #    Book(dep_date=MATCH.dep_date),
+    #    Book(dep_time=MATCH.dep_time),
+    #    NOT(Book(return_time=W())))
+    #def get_return_time(self, return_date, dep_date, dep_time):
+    #    if self.response is None:
+    #        self.response = "What time will you depart for your return?\n\t"
 
     # if every information has been filled out
-    @Rule(
-        Book(return_time=MATCH.return_time),
-        Book(return_date=MATCH.return_date),
-        Book(dep_time=MATCH.dep_time),
-        Book(dep_date=MATCH.dep_date),
-        Book(dep_station=MATCH.dep_station),
-        Book(arr_station=MATCH.arr_station),)
-    def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
-        if self.response is None:
-
-            self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
-              f"{dep_time}? And it will be a return on {return_date} at {return_time}? "
-              f"Okay lol don't need to get so worked up about it... \n\n" + scrape_to_string(
-                dep_station,
-                arr_station,
-                dep_date, dep_time, True, return_time, return_date))
+    #@Rule(
+    #    Book(return_time=MATCH.return_time),
+    #    Book(return_date=MATCH.return_date),
+    #    Book(dep_time=MATCH.dep_time),
+    #    Book(dep_date=MATCH.dep_date),
+    #    Book(dep_station=MATCH.dep_station),
+    #    Book(arr_station=MATCH.arr_station),)
+    #def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
+    #    if self.response is None:
+#
+    #        self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+    #          f"{dep_time}? And it will be a return on {return_date} at {return_time}? "
+    #          f"Okay lol don't need to get so worked up about it... \n\n" + scrape_to_string(
+    #            dep_station,
+    #            arr_station,
+    #            dep_date, dep_time, True, return_time, return_date))
 
 
     # if every information has been filled out
-    @Rule(
-        Book(return_ticket=False),
-        Book(dep_time=MATCH.dep_time),
-        Book(dep_date=MATCH.dep_date),
-        Book(dep_station=MATCH.dep_station),
-        Book(arr_station=MATCH.arr_station),)
-    def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
-        if self.response is None:
-
-            self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
-                f"{dep_time}? And it will be a return on And it won't be a return? "
-                f"Okay lol don't need to get so worked up about it... \n\n " + scrape_to_string(
-                    dep_station,
-                    arr_station,
-                    dep_date, dep_time, False, "", ""))
+    #@Rule(
+    #    Book(return_ticket=False),
+    #    Book(dep_time=MATCH.dep_time),
+    #    Book(dep_date=MATCH.dep_date),
+    #    Book(dep_station=MATCH.dep_station),
+    #    Book(arr_station=MATCH.arr_station),)
+    #def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
+    #    if self.response is None:
+#
+    #        self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+    #            f"{dep_time}? And it will be a return on And it won't be a return? "
+    #            f"Okay lol don't need to get so worked up about it... \n\n " + scrape_to_string(
+    #                dep_station,
+    #                arr_station,
+    #                dep_date, dep_time, False, "", ""))
 
 class Context:
-    def __init__(self, return_ticket :str , time :str, date :str, departure :str, destination :str, return_time :str, return_date :str):
-        self.return_ticket = return_ticket
-        self.time = time
-        self. date = date
-        self.departure = departure
-        self.destination = destination
-        self.return_time = return_time
-        self.return_date = return_date
+
+    #def __init__(self, return_ticket:bool , time :str, date :str, departure :str, destination :str, return_time :str,
+    #             return_date :str):
+#
+    #    self.return_ticket = return_ticket
+    #    self.time = time
+    #    self.date = date
+    #    self.departure = departure
+    #    self.destination = destination
+    #    self.return_time = return_time
+    #    self.return_date = return_date
+
+    def __init__(self, string: str):
+
+        print(string)
+
+        string_nlp = nlp(string)
+
+        self.return_ticket = \
+            self.time = \
+            self.date = \
+            self.departure = \
+            self.destination = \
+            self.return_time = \
+            self.return_date = None
+
+        # Extract entities
+        entities = [(ent.text, ent.label_) for ent in string_nlp.ents]
+
+        # Extract dependency relations
+        dep_relations = [(token.text, token.dep_, token.head.text) for token in string_nlp]
+
+        for ent in entities:
+
+            for token, dep, head in dep_relations:
+
+                if ent[0] == token:
+
+                    if dep == "pobj" and head in ["from", "leave"]:
+
+                        self.departure = ent[0]
+
+                    elif dep == "pobj" and head in ["to", "arrive"]:
+
+                        self.destination = ent[0]
+
+
+        if any((token.text.lower() == ("return" or "yes")) for token in string_nlp):
+
+            self.return_ticket = True
+
+        if any((token.text.lower() == "no") for token in string_nlp):
+
+            self.return_ticket = False
+
+
+        time_tokens = []
+        # Extract time and date
+        for token in string_nlp:
+
+            if token.ent_type_ == "TIME" and self.time is None:
+
+                time_tokens.append(token.text)
+
+            elif token.ent_type_ == "DATE" and self.date is None:
+
+                self.date = convert_date(token.text)
+
+
+        time_str = ''.join(time_tokens)
+
+        if time_str != '':
+
+            self.time = convert_time(''.join(time_tokens))
+
+
+    def to_string(self):
+
+        string = ""
+
+        if self.departure is not None:
+
+            string += f'from {self.departure} '
+
+        if self.destination is not None:
+
+            string += f'to {self.destination} '
+
+        if self.time is not None:
+
+            string += f'at {self.time} '
+
+        if self.date is not None:
+
+            string += f'on {self.date} '
+
+        if self.return_ticket is True:
+
+            string += f'as a {self.return_ticket} '
+
+            if self.return_time is not None:
+
+                string += f'at {self.return_time} '
+
+            if self.return_date is not None:
+
+                string += f'on {self.return_date} '
+
+
+        return string
+
 
 def bot_response(message: str, context: Context):
-    return_time = return_date = None
-    if context.destination and context.time and context.return_ticket and context.departure and context.date is not None:
-        _, return_time, return_date, _, _ = extract_entities(nlp(message))
 
-    return_ticket, time, date, departure, destination = extract_entities(nlp(message))
-    print(return_ticket, time, date, departure, destination)
+    #return_time = return_date = None
+    #if context.destination and context.time and context.return_ticket and context.departure and context.date is not None:
+    #    _, return_time, return_date, _, _ = extract_entities(nlp(message))
 
-    if context.return_ticket is not None:
-        return_ticket = context.return_ticket
+    #return_ticket, time, date, departure, destination = extract_entities(nlp(message))
+    context = Context(f"{context.to_string()} {message}")
 
-    if context.time is not None:
-        time = context.time
+    #if context.return_ticket is not None:
+    #    return_ticket = context.return_ticket
+#
+    #if context.time is not None:
+    #    time = context.time
+#
+    #if context.date is not None:
+    #    date = context.date
+#
+    #if context.departure is not None:
+    #    departure = context.departure
+#
+    #if context.destination is not None:
+    #    destination = context.destination
 
-    if context.date is not None:
-        date = context.date
-
-    if context.departure is not None:
-        departure = context.departure
-    
-    if context.destination is not None:
-        destination = context.destination
-    
     bot = TrainBot()
     bot.reset()
-    if return_ticket is not None:
-        bot.declare(Book(return_ticket=return_ticket))
-    if time is not None:
-        bot.declare(Book(dep_time= time))
-    if date is not None:
-        bot.declare(Book(dep_date = date))
-    if departure is not None:
-        bot.declare(Book(dep_station = departure))
-    if destination is not None:
-        bot.declare(Book(arr_station = destination))
 
-    if return_time is not None:
-        bot.declare(Book(return_time=return_time))
-    if return_date is not None:
-        bot.declare(Book(return_date=return_date))
+    if context.return_ticket is not None:
 
-    print(bot.facts)
-    message = bot.run_with_response()
-    return message, Context(return_ticket, time, date, departure, destination, return_time, return_date)
-    
+        print(context.return_ticket)
+        bot.declare(Book(return_ticket=context.return_ticket))
+
+    if context.time is not None:
+
+        print(context.time)
+        bot.declare(Book(dep_time=context.time))
+
+    if context.date is not None:
+
+        print(context.date)
+        bot.declare(Book(dep_date=context.date))
+
+    if context.departure is not None:
+
+        print(context.departure)
+        bot.declare(Book(dep_station=context.departure))
+
+    if context.destination is not None:
+
+        print(context.destination)
+        bot.declare(Book(arr_station=context.destination))
+
+    if context.return_time is not None:
+
+        print(context.return_time)
+        bot.declare(Book(return_time=context.return_time))
+
+    if context.return_date is not None:
+
+        print(context.return_date)
+        bot.declare(Book(return_date=context.return_date))
+
+
+    message, fact_string = bot.run_with_response()
+
+    return message, context, fact_string
+
 
 # test harness to prove it works
 def TestHarness():
+
     print("Hello! \n")
-    context = Context(None, None, None, None, None, None, None)
+    context = Context("")
+    print(context.to_string())
+    fact_string = ""
+
     while True:
-        message = input()
-        response, context = bot_response(message, context)
+
+        print(fact_string)
+        message = f"{fact_string} {input()}"
+        response, context, fact_string = bot_response(message, context)
+        print(context.to_string())
         print(response)
+
 
 # if running this file, run the test harness
 if __name__ == '__main__':
+
     TestHarness()
 
 
@@ -675,7 +838,7 @@ if __name__ == '__main__':
 
 #         #     if token.ent_type_ == "TIME":
 #         #         time_tokens.append(token.text)
-                
+
 #         # time_str = ''.join(time_tokens)
 #         # if time_str != '':
 #         #     self.declare(Book(dep_time=str(convert_time(time_str))))
