@@ -6,4 +6,8 @@ python-dateutil~=2.9.0.post0
 pydantic~=2.7.1
 requests~=2.31.0
 numpy   ~=1.24.4
-websockets ==12.0
+websockets ~=12.0
+sqlalchemy ~=2.0.30
+matplotlib ~=3.7.5
+pandas ~=2.0.3
+psycopg2 ~=2.9.9
