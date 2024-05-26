@@ -298,15 +298,16 @@ class TrainBot(KnowledgeEngine):
     @Rule(AND(NOT(Book(dep_station=W())),
           NOT(Book(arr_station=W()))))
     def _get_dep_station(self):
+        if self.response is None:
+            self.response = "Which station will you be departing from?"
+        # station_code = None
 
-        station_code = None
+        # while station_code is None:
 
-        while station_code is None:
-
-            station_code = self.clarify_station(True)
+        #     station_code = self.clarify_station(True)
 
 
-        self.declare(Book(dep_station=station_code))
+        # self.declare(Book(dep_station=station_code))
 
 
     @Rule(NOT(Book(dep_station=W())),
@@ -329,15 +330,16 @@ class TrainBot(KnowledgeEngine):
     @Rule(AND(NOT(Book(dep_station=W())),
           NOT(Book(arr_station=W()))))
     def get_arr_station(self):
+        if self.response is None:
+            self.response = "Which station will you be arriving at?"
+        # station_code = None
 
-        station_code = None
+        # while station_code is None:
 
-        while station_code is None:
-
-            station_code = self.clarify_station(False)
+        #     station_code = self.clarify_station(False)
 
 
-        self.declare(Book(arr_station=station_code))
+        # self.declare(Book(arr_station=station_code))
 
 
     @Rule(NOT(Book(arr_station=W())),
@@ -364,7 +366,6 @@ class TrainBot(KnowledgeEngine):
         if self.response is None:
             self.response = "What date will you be departing?\n\t"
 
-
     @Rule(NOT(Book(return_ticket=W())))
     def get_return(self):
         if self.response is None:
@@ -377,6 +378,7 @@ class TrainBot(KnowledgeEngine):
     def get_return_date(self, dep_date):
         if self.response is None:
             self.response = "What date will you be returning?\n\t"
+
 
     # cannot occur without the date being set
     @Rule(
@@ -483,12 +485,12 @@ def bot_response(message: str, context: Context):
 
 # test harness to prove it works
 def TestHarness():
+    print("Hello! \n")
     context = Context(None, None, None, None, None, None, None)
     while True:
         message = input()
         response, context = bot_response(message, context)
         print(response)
-
 
 # if running this file, run the test harness
 if __name__ == '__main__':
