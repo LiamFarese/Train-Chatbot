@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import pandas as pd
-from pandas.core.interchange import dataframe
 
 import pickle
 
@@ -16,6 +15,8 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
 import datetime as dt
+
+import pickle
 
 
 # constants #
@@ -81,14 +82,13 @@ def get_full_historical_dataset(print_progress=False):
     data = {
 
         'delay': [],
-        #'departure_delay': [],
         'day_of_week': [],
         'day_of_year': [],
         'weekday': [],
         'on_peak': [],
         'hour': [],
-        #'first_stop': [],
-        #'second_stop': [],
+        'first_stop': [],
+        'second_stop': [],
     }
 
     station_dict = {}
@@ -113,9 +113,6 @@ def get_full_historical_dataset(print_progress=False):
 
                     (historical['pta'].notnull())
                     & (historical['arr_at'].notnull())
-                    & (historical['ptd'].notnull())
-                    & (historical['ptd'].notnull())
-                    & (historical['dep_at'].notnull())
                     & (historical['tpl'].notnull())
                 ]
 
@@ -141,11 +138,6 @@ def get_full_historical_dataset(print_progress=False):
                     continue
 
 
-                # get delay and departure delay
-                d_predicted = extract_seconds_from_string(previous_row['ptd'])
-                d_actual = extract_seconds_from_string(previous_row['dep_at'])
-                departure_delay = d_predicted - d_actual
-
                 # get day of week and month and if weekday
                 date = extract_date_from_rid(str(row['rid']))
                 day_of_month = date.day
@@ -167,7 +159,7 @@ def get_full_historical_dataset(print_progress=False):
                 on_peak = time.hour >= 9
 
                 # get first and second stop
-                first_stop = previous_row['tpl']
+                first_stop = previous_row['tpl'][0:3]
 
                 if first_stop not in station_dict:
 
@@ -176,7 +168,7 @@ def get_full_historical_dataset(print_progress=False):
 
 
                 # get first and second stop
-                second_stop = row['tpl']
+                second_stop = row['tpl'][0:3]
 
                 if second_stop not in station_dict:
                     # index station as next possible + 1
@@ -184,7 +176,6 @@ def get_full_historical_dataset(print_progress=False):
 
 
                 data['delay']           .append(delay)
-                #data['departure_delay'] .append(departure_delay)
 
                 data['day_of_week']     .append(day_of_week)
                 data['day_of_year']     .append(day_of_year)
@@ -193,8 +184,8 @@ def get_full_historical_dataset(print_progress=False):
                 data['on_peak']         .append(int(on_peak))
                 data['hour']            .append(time.hour)
 
-                #data['first_stop']     .append(station_dict[first_stop])
-                #data['second_stop']     .append(station_dict[second_stop])
+                data['first_stop']     .append(station_dict[first_stop])
+                data['second_stop']     .append(station_dict[second_stop])
 
                 previous_row = row
 
@@ -268,31 +259,18 @@ def main():
                 print(station_dict)
 
 
-        if full or option == 8:
+        if option == 8:
 
-            print('Testing Decision Tree Regressor')
+            print('Testing Random Forest Regressor')
 
-            model = DecisionTreeRegressor()
+            model = RandomForestRegressor(max_depth=18, max_features=6)
             score = train_model(data, model)
-            print(f'\tmax_depth=None, score={score}')
-
-            for i in range(1, 30):
-
-                model = DecisionTreeRegressor(max_depth=i)
-                score = train_model(data, model)
-                print(f'\tmax_depth={i}, score={score}')
-
-
-            for i in range(1, 30):
-
-                model = DecisionTreeRegressor(max_features=i)
-                score = train_model(data, model)
-                print(f'\tmax_features={i}, score={score}')
+            print(f'\tscore={score}')
 
 
             print('Testing Ada Boost Regressor')
 
-            for i in range(10, 20):
+            for i in range(1, 30):
 
                 estimator = DecisionTreeRegressor(max_depth=i, max_features=6)
                 model = AdaBoostRegressor(estimator=estimator, random_state=seed)
@@ -316,14 +294,6 @@ def main():
             print(f'\tmax_depth=9, max_features=None, score={score}')
 
 
-            for i in range(3, 6):
-
-                estimator = DecisionTreeRegressor(max_depth=None, max_features=i)
-                model = AdaBoostRegressor(estimator=estimator, random_state=seed)
-                score = train_model(data, model)
-                print(f'\tmax_depth=None, max_features={i}, score={score}')
-
-
             print('Testing knn')
 
             for i in range(5, 13):
@@ -332,6 +302,26 @@ def main():
                 score = train_model(data, model)
 
                 print(f'\tn_neighbours={i}, score={score}')
+
+
+            print('Testing Decision Tree Regressor')
+
+            model = DecisionTreeRegressor()
+            score = train_model(data, model)
+            print(f'\tmax_depth=None, score={score}')
+
+            for i in range(5, 15):
+
+                model = DecisionTreeRegressor(max_depth=i)
+                score = train_model(data, model)
+                print(f'\tmax_depth={i}, score={score}')
+
+
+            for i in range(1, 10):
+
+                model = DecisionTreeRegressor(max_features=i)
+                score = train_model(data, model)
+                print(f'\tmax_features={i}, score={score}')
 
 
             print('Testing Linear')
@@ -350,7 +340,7 @@ def main():
 
             print("Saving...")
 
-            model = DecisionTreeRegressor(max_depth=None, max_features=None)
+            model = DecisionTreeRegressor(max_depth=18, max_features=6)
 
             X = data[data.columns.drop('delay')]
             y = data['delay']
