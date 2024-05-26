@@ -105,10 +105,11 @@ def extract_entities(user_input):
 
                     destination = ent[0]
 
-    if any(token.text.lower() == "return" for token in user_input):
-
+    if any((token.text.lower() == ("return" or "yes"))for token in user_input):
         return_ticket = True
-
+    
+    if any((token.text.lower() == "no" )for token in user_input):
+        return_ticket = False
         
     time_tokens = []
     # Extract time and date
@@ -215,9 +216,16 @@ class Book(Fact):
     """
 
     pass
-
-
+        
 class TrainBot(KnowledgeEngine):
+    def __init__(self):
+        super().__init__()
+        self.response = None
+
+    def run_with_response(self):
+        self.response = None
+        self.run()
+        return self.response
 
     # if the user types "undo", delete the last fact
     def check_undo(self, user_input):
@@ -287,51 +295,19 @@ class TrainBot(KnowledgeEngine):
             return None
 
 
-    @DefFacts()
-    def _initial_action(self):
-
-        return_ticket, time, date, departure, destination = extract_entities(nlp(input("Hello!\n\t")))
-
-        if return_ticket is not None:
-
-            yield Book(return_ticket=return_ticket)
-
-        if time is not None:
-
-            yield Book(dep_time=time)
-
-        if date is not None:
-
-            yield Book(dep_date=date)
-
-        if departure is not None:
-
-            if convert_station_name(departure)[0] is not None and convert_station_name(departure)[1] is False:
-
-                yield Book(dep_station=departure)
-
-        if destination is not None:
-
-            if convert_station_name(destination)[0] is not None and convert_station_name(destination)[1] is False:
-
-                yield Book(arr_station=destination)
-
-
-    # get Departure Station #
-
-
     @Rule(AND(NOT(Book(dep_station=W())),
           NOT(Book(arr_station=W()))))
     def _get_dep_station(self):
+        if self.response is None:
+            self.response = "Which station will you be departing from?"
+        # station_code = None
 
-        station_code = None
+        # while station_code is None:
 
-        while station_code is None:
-
-            station_code = self.clarify_station(True)
+        #     station_code = self.clarify_station(True)
 
 
-        self.declare(Book(dep_station=station_code))
+        # self.declare(Book(dep_station=station_code))
 
 
     @Rule(NOT(Book(dep_station=W())),
@@ -354,15 +330,16 @@ class TrainBot(KnowledgeEngine):
     @Rule(AND(NOT(Book(dep_station=W())),
           NOT(Book(arr_station=W()))))
     def get_arr_station(self):
+        if self.response is None:
+            self.response = "Which station will you be arriving at?"
+        # station_code = None
 
-        station_code = None
+        # while station_code is None:
 
-        while station_code is None:
-
-            station_code = self.clarify_station(False)
+        #     station_code = self.clarify_station(False)
 
 
-        self.declare(Book(arr_station=station_code))
+        # self.declare(Book(arr_station=station_code))
 
 
     @Rule(NOT(Book(arr_station=W())),
@@ -381,92 +358,26 @@ class TrainBot(KnowledgeEngine):
 
     @Rule(NOT(Book(dep_time=W())))
     def get_dep_time(self):
-      
-        time_tokens = []
-        for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
-
-            if token.ent_type_ == "TIME":
-                time_tokens.append(token.text)
-                
-        time_str = ''.join(time_tokens)
-        if time_str != '':
-            self.declare(Book(dep_time=str(convert_time(time_str))))
-
+        if self.response is None:
+            self.response = "Sorry, we didn't get the time. What time will you be departing?\n\t"
 
     @Rule(NOT(Book(dep_date=W())))
     def get_dep_date(self):
-
-        dep_date = None
-
-        while dep_date is None:
-
-            user_input = input("What date will you be departing?\n\t")
-
-            if self.check_undo(user_input):
-                return
-
-            for token in nlp(user_input):
-
-                if token.ent_type_ == "DATE":
-
-                    dep_date = str(convert_date(token.text))
-                    break
-
-            if dep_date is None:
-
-                print("Sorry, that date is invalid. ")
-
-
-        self.declare(Book(dep_date=dep_date))
-
+        if self.response is None:
+            self.response = "What date will you be departing?\n\t"
 
     @Rule(NOT(Book(return_ticket=W())))
     def get_return(self):
-
-        user_input = input("Will you be returning? (yes or no)\n\t").lower()
-
-        if self.check_undo(user_input):
-            return
-
-        return_ticket = "yes" in user_input or "will be" in user_input
-
-        self.declare(Book(return_ticket=return_ticket))
-
+        if self.response is None:
+            self.response = "Will you be returning? (yes or no)\n\t"
 
     @Rule(
         Book(return_ticket=True),
         Book(dep_date=MATCH.dep_date),
         NOT(Book(return_date=W())))
     def get_return_date(self, dep_date):
-
-        return_date = None
-        departure_date = convert_date(dep_date)
-
-        while return_date is None:
-
-            user_input = input("What date will you be returning?\n\t")
-
-            if self.check_undo(user_input):
-                return
-
-            for token in nlp(user_input):
-
-                if token.ent_type_ == "DATE":
-
-                    return_date = str(convert_date(token.text))
-                    break
-
-            if return_date is not None:
-
-                if return_date < departure_date:
-
-                    print("Sorry, the return date cannot be before the departure date. ")
-                    return_date = None
-            else:
-
-                print("Sorry, that date is invalid. ")
-
-        self.declare(Book(return_date=return_date))
+        if self.response is None:
+            self.response = "What date will you be returning?\n\t"
 
 
     # cannot occur without the date being set
@@ -477,39 +388,8 @@ class TrainBot(KnowledgeEngine):
         Book(dep_time=MATCH.dep_time),
         NOT(Book(return_time=W())))
     def get_return_time(self, return_date, dep_date, dep_time):
-
-        return_time = None
-        check_time = return_date == dep_date
-        departure_time = convert_time(dep_time)
-
-        while return_time is None:
-
-            user_input = input("What time will you depart for your return?\n\t")
-
-            if self.check_undo(user_input):
-                return
-
-            time_tokens = []
-            for token in nlp(user_input):
-
-                if token.ent_type_ == "TIME":
-                    time_tokens.append(token.text)
-                    time_str = ''.join(time_tokens)
-                if time_str != '':
-                    return_time = time_str
-
-            if return_time is not None:
-
-                if check_time and return_time <= departure_time:
-
-                    print("Sorry, the return time cannot be before the departure time if they are on the same day. ")
-                    return_time = None
-            else:
-
-                print("Sorry, that time is invalid. ")
-
-        self.declare(Book(return_time=return_time))
-
+        if self.response is None:
+            self.response = "What time will you depart for your return?\n\t"
 
     # if every information has been filled out
     @Rule(
@@ -520,16 +400,13 @@ class TrainBot(KnowledgeEngine):
         Book(dep_station=MATCH.dep_station),
         Book(arr_station=MATCH.arr_station),)
     def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
+        if self.response is None:
 
-        print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+            self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
               f"{dep_time}? And it will be a return on {return_date} at {return_time}? "
-              f"Okay lol don't need to get so worked up about it...")
-
-        print("\n\n" +
-
-            scrape_to_string(
-                convert_station_name(dep_station)[0],
-                convert_station_name(arr_station)[0],
+              f"Okay lol don't need to get so worked up about it... \n\n" + scrape_to_string(
+                dep_station,
+                arr_station,
                 dep_date, dep_time, True, return_time, return_date))
 
 
@@ -541,28 +418,417 @@ class TrainBot(KnowledgeEngine):
         Book(dep_station=MATCH.dep_station),
         Book(arr_station=MATCH.arr_station),)
     def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
+        if self.response is None:
 
-        print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
-              f"{dep_time}? And it will be a return on And it won't be a return? "
-              f"Okay lol don't need to get so worked up about it...")
+            self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+                f"{dep_time}? And it will be a return on And it won't be a return? "
+                f"Okay lol don't need to get so worked up about it... \n\n " + scrape_to_string(
+                    dep_station,
+                    arr_station,
+                    dep_date, dep_time, False, "", ""))
 
-        print("\n\n" +
+class Context:
+    def __init__(self, return_ticket :str , time :str, date :str, departure :str, destination :str, return_time :str, return_date :str):
+        self.return_ticket = return_ticket
+        self.time = time
+        self. date = date
+        self.departure = departure
+        self.destination = destination
+        self.return_time = return_time
+        self.return_date = return_date
 
-            scrape_to_string(
-                dep_station,
-                arr_station,
-                dep_date, dep_time, False, "", ""))
+def bot_response(message: str, context: Context):
+    return_time = return_date = None
+    if context.destination and context.time and context.return_ticket and context.departure and context.date is not None:
+        _, return_time, return_date, _, _ = extract_entities(nlp(message))
 
+    return_ticket, time, date, departure, destination = extract_entities(nlp(message))
+    print(return_ticket, time, date, departure, destination)
+
+    if context.return_ticket is not None:
+        return_ticket = context.return_ticket
+
+    if context.time is not None:
+        time = context.time
+
+    if context.date is not None:
+        date = context.date
+
+    if context.departure is not None:
+        departure = context.departure
+    
+    if context.destination is not None:
+        destination = context.destination
+    
+    bot = TrainBot()
+    bot.reset()
+    if return_ticket is not None:
+        bot.declare(Book(return_ticket=return_ticket))
+    if time is not None:
+        bot.declare(Book(dep_time= time))
+    if date is not None:
+        bot.declare(Book(dep_date = date))
+    if departure is not None:
+        bot.declare(Book(dep_station = departure))
+    if destination is not None:
+        bot.declare(Book(arr_station = destination))
+
+    if return_time is not None:
+        bot.declare(Book(return_time=return_time))
+    if return_date is not None:
+        bot.declare(Book(return_date=return_date))
+
+    print(bot.facts)
+    message = bot.run_with_response()
+    return message, Context(return_ticket, time, date, departure, destination, return_time, return_date)
+    
 
 # test harness to prove it works
 def TestHarness():
-
-    bot = TrainBot()
-    bot.reset()
-    bot.run()
-
+    print("Hello! \n")
+    context = Context(None, None, None, None, None, None, None)
+    while True:
+        message = input()
+        response, context = bot_response(message, context)
+        print(response)
 
 # if running this file, run the test harness
 if __name__ == '__main__':
-
     TestHarness()
+
+
+# class TrainBot(KnowledgeEngine):
+
+#     # if the user types "undo", delete the last fact
+#     def check_undo(self, user_input):
+
+#         user_input = user_input.lower()
+
+#         if "undo" in user_input:
+
+#             remove_key = list(self.facts.keys())[-1]
+#             remove_fact = self.facts[remove_key]
+#             self.retract(remove_fact)
+#             print(self.facts)
+#             return True
+
+#         # unsuccessful
+#         return False
+
+
+#     # station clarification used in multiple functions
+#     def clarify_station(self, is_departure, other_station=None):
+
+#         station_code = None
+#         multiple_found = True
+
+#         # get words to say in print so arrival and departure can be unified
+#         ing = "departing" if is_departure else "arriving"
+
+#         while station_code is None or multiple_found or station_code == other_station:
+
+#             city = input(f"Which station will you be {ing} from?\n\t")
+
+#             if self.check_undo(city):
+#                 return None
+
+#             station_code, multiple_found = convert_station_name(city)
+
+#             # if the user has not used a one word answer
+#             if station_code is None:
+
+#                 for ent in nlp(city).ents:
+
+#                     station_code, multiple_found = convert_station_name(ent.text)
+
+#                     if station_code is not None:
+
+#                         return ent
+
+
+#             if multiple_found:
+
+#                 print(f"Which station in {city}?...\n")
+
+#                 for code in station_code:
+
+#                     print(f"- {code}?")
+
+
+#             if station_code == other_station:
+
+#                 print("Sorry, but you cannot arrive and depart from the same station. ")
+
+
+#         if station_code is not None:
+
+#             return city
+#         else:
+#             return None
+
+
+#     @DefFacts()
+#     def _initial_action(self):
+
+#         return_ticket, time, date, departure, destination = extract_entities(nlp(input("Hello!\n\t")))
+
+#         if return_ticket is not None:
+
+#             yield Book(return_ticket=return_ticket)
+
+#         if time is not None:
+
+#             yield Book(dep_time=time)
+
+#         if date is not None:
+
+#             yield Book(dep_date=date)
+
+#         if departure is not None:
+
+#             if convert_station_name(departure)[0] is not None and convert_station_name(departure)[1] is False:
+
+#                 yield Book(dep_station=departure)
+
+#         if destination is not None:
+
+#             if convert_station_name(destination)[0] is not None and convert_station_name(destination)[1] is False:
+
+#                 yield Book(arr_station=destination)
+
+
+#     # get Departure Station #
+
+
+#     @Rule(AND(NOT(Book(dep_station=W())),
+#           NOT(Book(arr_station=W()))))
+#     def _get_dep_station(self):
+
+#         station_code = None
+
+#         while station_code is None:
+
+#             station_code = self.clarify_station(True)
+
+
+#         self.declare(Book(dep_station=station_code))
+
+
+#     @Rule(NOT(Book(dep_station=W())),
+#           Book(arr_station=MATCH.arr_station))
+#     def _get_dep_station_check_arr_station(self, arr_station):
+
+#         station_code = None
+
+#         while station_code is None:
+
+#             station_code = self.clarify_station(True, arr_station)
+
+
+#         self.declare(Book(dep_station=station_code))
+
+
+#     # get Arrival Station #
+
+
+#     @Rule(AND(NOT(Book(dep_station=W())),
+#           NOT(Book(arr_station=W()))))
+#     def get_arr_station(self):
+
+#         station_code = None
+
+#         while station_code is None:
+
+#             station_code = self.clarify_station(False)
+
+
+#         self.declare(Book(arr_station=station_code))
+
+
+#     @Rule(NOT(Book(arr_station=W())),
+#           Book(dep_station=MATCH.dep_station))
+#     def get_arr_station_check_dep_station(self, dep_station):
+
+#         station_code = None
+
+#         while station_code is None:
+
+#             station_code = self.clarify_station(False, dep_station)
+
+
+#         self.declare(Book(arr_station=station_code))
+
+
+#     @Rule(NOT(Book(dep_time=W())))
+#     def get_dep_time(self):
+      
+#         time_tokens = []
+#         for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
+
+#             if token.ent_type_ == "TIME":
+#                 time_tokens.append(token.text)
+                
+#         time_str = ''.join(time_tokens)
+#         if time_str != '':
+#             self.declare(Book(dep_time=str(convert_time(time_str))))
+
+
+#     @Rule(NOT(Book(dep_date=W())))
+#     def get_dep_date(self):
+
+#         dep_date = None
+
+#         while dep_date is None:
+
+#             user_input = input("What date will you be departing?\n\t")
+
+#             if self.check_undo(user_input):
+#                 return
+
+#             for token in nlp(user_input):
+
+#                 if token.ent_type_ == "DATE":
+
+#                     dep_date = str(convert_date(token.text))
+#                     break
+
+#             if dep_date is None:
+
+#                 print("Sorry, that date is invalid. ")
+
+
+#         self.declare(Book(dep_date=dep_date))
+
+
+#     @Rule(NOT(Book(return_ticket=W())))
+#     def get_return(self):
+
+#         user_input = input("Will you be returning? (yes or no)\n\t").lower()
+
+#         if self.check_undo(user_input):
+#             return
+
+#         return_ticket = "yes" in user_input or "will be" in user_input
+
+#         self.declare(Book(return_ticket=return_ticket))
+
+
+#     @Rule(
+#         Book(return_ticket=True),
+#         Book(dep_date=MATCH.dep_date),
+#         NOT(Book(return_date=W())))
+#     def get_return_date(self, dep_date):
+
+#         return_date = None
+#         departure_date = convert_date(dep_date)
+
+#         while return_date is None:
+
+#             user_input = input("What date will you be returning?\n\t")
+
+#             if self.check_undo(user_input):
+#                 return
+
+#             for token in nlp(user_input):
+
+#                 if token.ent_type_ == "DATE":
+
+#                     return_date = str(convert_date(token.text))
+#                     break
+
+#             if return_date is not None:
+
+#                 if return_date < departure_date:
+
+#                     print("Sorry, the return date cannot be before the departure date. ")
+#                     return_date = None
+#             else:
+
+#                 print("Sorry, that date is invalid. ")
+
+#         self.declare(Book(return_date=return_date))
+
+
+#     # cannot occur without the date being set
+#     @Rule(
+#         Book(return_ticket=True),
+#         Book(return_date=MATCH.return_date),
+#         Book(dep_date=MATCH.dep_date),
+#         Book(dep_time=MATCH.dep_time),
+#         NOT(Book(return_time=W())))
+#     def get_return_time(self, return_date, dep_date, dep_time):
+
+#         return_time = None
+#         check_time = return_date == dep_date
+#         departure_time = convert_time(dep_time)
+
+#         while return_time is None:
+
+#             user_input = input("What time will you depart for your return?\n\t")
+
+#             if self.check_undo(user_input):
+#                 return
+
+#             time_tokens = []
+#             for token in nlp(user_input):
+
+#                 if token.ent_type_ == "TIME":
+#                     time_tokens.append(token.text)
+#                     time_str = ''.join(time_tokens)
+#                 if time_str != '':
+#                     return_time = time_str
+
+#             if return_time is not None:
+
+#                 if check_time and return_time <= departure_time:
+
+#                     print("Sorry, the return time cannot be before the departure time if they are on the same day. ")
+#                     return_time = None
+#             else:
+
+#                 print("Sorry, that time is invalid. ")
+
+#         self.declare(Book(return_time=return_time))
+
+
+#     # if every information has been filled out
+#     @Rule(
+#         Book(return_time=MATCH.return_time),
+#         Book(return_date=MATCH.return_date),
+#         Book(dep_time=MATCH.dep_time),
+#         Book(dep_date=MATCH.dep_date),
+#         Book(dep_station=MATCH.dep_station),
+#         Book(arr_station=MATCH.arr_station),)
+#     def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
+
+#         print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+#               f"{dep_time}? And it will be a return on {return_date} at {return_time}? "
+#               f"Okay lol don't need to get so worked up about it...")
+
+#         print("\n\n" +
+
+#             scrape_to_string(
+#                 convert_station_name(dep_station)[0],
+#                 convert_station_name(arr_station)[0],
+#                 dep_date, dep_time, True, return_time, return_date))
+
+
+#     # if every information has been filled out
+#     @Rule(
+#         Book(return_ticket=False),
+#         Book(dep_time=MATCH.dep_time),
+#         Book(dep_date=MATCH.dep_date),
+#         Book(dep_station=MATCH.dep_station),
+#         Book(arr_station=MATCH.arr_station),)
+#     def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
+
+#         print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
+#               f"{dep_time}? And it will be a return on And it won't be a return? "
+#               f"Okay lol don't need to get so worked up about it...")
+
+#         print("\n\n" +
+
+#             scrape_to_string(
+#                 dep_station,
+#                 arr_station,
+#                 dep_date, dep_time, False, "", ""))
