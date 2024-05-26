@@ -19,19 +19,16 @@ export default function MessageBlock(props) {
 
         messageBoxes = []
         key = 0
-
-        props.messages.forEach((message) => {
             
-            messageBoxes.push(
-                
-                <View style={{marginTop: 2}} key={'margin' + key++}/>
-            )
+        messageBoxes.push(
             
-            messageBoxes.push(
-                
-                <MessageBox fill={props.left} key={'message' + key++}>{message}</MessageBox>
-            )
-        })
+            <View style={{marginTop: 2}} key={'margin' + key++}/>
+        )
+        
+        messageBoxes.push(
+            
+            <MessageBox fill={props.left} key={'message' + key++}>{props.messages}</MessageBox>
+        )
 
         return messageBoxes
     }
