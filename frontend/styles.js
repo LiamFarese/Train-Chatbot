@@ -72,8 +72,7 @@ export default styles = (colors, pressed = false) => StyleSheet.create({
 
         backgroundColor: colors.background,
         borderRadius: 32,
-        paddingLeft: 16,
-        paddingRight: 16,
+        padding: 16,
         flex: 1,
     },
 })

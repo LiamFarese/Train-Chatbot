@@ -197,6 +197,7 @@ export default function Chat() {
                     <Button
 
                         onPress={() => setCurrentModal('Help')}
+                        primary={true}
                     >
                         Help
 
@@ -249,6 +250,7 @@ export default function Chat() {
                     onChangeText={newText => setCurrentTyping(newText)}
                     onTouchStart={() => this.scrollView.scrollToEnd() }
                     onSubmitEditing={() => submitMessage()}
+                    placeholderTextColor={colors.text}
                 />
 
                 <View style={{marginRight: 2,}} />
@@ -262,7 +264,7 @@ export default function Chat() {
 
                         styles(colors).text,
                     {
-                        color: colors.card
+                        color: 'white'
                     }]}>
                         Send
 

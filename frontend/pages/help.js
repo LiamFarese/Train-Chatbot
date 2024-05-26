@@ -37,20 +37,41 @@ export default function Help(props) {
                 },
                     styles(colors).maxWidth,
                     styles(colors).modal,
-                ]}
-                >
+                ]}>
                     {/* Header */}
 
-                    <Text style={[
+                    <View style={[
 
-                        styles(colors).text,
-                        styles(colors).title,
-                    {
-                        padding: 8,
-                    }]}>
-                        Help
-                    
-                    </Text>
+                        {
+                            paddingBottom: 8,
+                            flexDirection: 'row',
+                            width: '100%',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        } 
+                    ]}>
+                        <Text style={[
+
+                            styles(colors).text,
+                            styles(colors).title
+                        ]}>
+                            Help
+
+                        </Text>
+                        
+                        <Button
+
+                            style={{
+
+                                alignSelf: 'flex-end'
+                            }}
+
+                            onPress={props.onClose}
+                        >
+                            X
+
+                        </Button>
+                    </View>
                     
                     {/* Main Text */}
                     <View style={styles(colors).scrollViewContainer}>
@@ -67,8 +88,9 @@ export default function Help(props) {
                         <Button 
 
                             onPress={props.onClose}
+                            primary={true}
                         >
-                            Close
+                            Done
                         </Button>
                     </View>
                 </View>
