@@ -22,7 +22,7 @@ export default function MessageBox(props){
             
             <Text style={[styles(colors).text, {
 
-                color: props.fill ? colors.card : colors.text,
+                color: props.fill ? 'white' : colors.text,
                 textAlign: props.fill ? 'left' : 'right',
             }]}>
                 {props.children}

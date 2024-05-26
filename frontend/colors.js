@@ -5,13 +5,28 @@ const lightColors = {
 
     colors: {
 
-        primary: '#971fbd',
-        background: 'rgb(242, 242, 242)',
-        card: 'rgb(255, 255, 255)',
-        text: '#4b1dcc',
-        border: 'rgb(199, 199, 204)',
-        notification: 'rgb(255, 69, 58)',
+        background: "rgb(242, 242, 242)",
+        border: "rgb(216, 216, 216)",
+        card: "rgb(255, 255, 255)",
+        notification: "rgb(255, 59, 48)",
+        primary: "rgb(0, 122, 255)",
+        text: "rgb(28, 28, 30)",
     }
 }
 
-export default { lightColors }
+const darkColors = {
+
+    dark: true,
+
+    colors: {
+ 
+        background: "rgb(1, 1, 1)",
+        border: "rgb(39, 39, 41)",
+        card: "#202947",
+        notification: "rgb(255, 69, 58)",
+        primary: "rgb(10, 132, 255)",
+        text: "rgb(229, 229, 231)"
+    }
+}
+
+export default { lightColors, darkColors }
