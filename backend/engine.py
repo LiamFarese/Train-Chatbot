@@ -132,7 +132,7 @@ def extract_entities(user_input):
 
 
 def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
-                     return_ticket=False, return_time=None, return_date=None):
+                     return_ticket=False, return_time='', return_date=''):
 
     with open('model.pickle', 'rb') as file:
         model = pickle.load(file)
@@ -148,7 +148,24 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
     details, url = scrape(
         dep_station,
         arr_station,
-        dep_date, dep_time, False, "", "")
+        dep_date,
+        dep_time,
+        False,
+        '',
+        '')
+
+    if return_ticket:
+
+        print(return_time, return_date)
+
+        details, url = scrape(
+            dep_station,
+            arr_station,
+            dep_date,
+            dep_time,
+            True,
+            str(return_time),
+            str(return_date))
 
 
     dep_dt = dt.datetime.strptime(details[0], '%Y-%m-%d %H:%M:%S')
@@ -259,7 +276,7 @@ def get_question(query):
     return question
 
 
-def try_extract_if_valid(message : str, extract_func, warning : str):
+def try_extract_if_valid(message: str, extract_func, warning: str):
 
     for word in message.split():
 
@@ -351,9 +368,7 @@ def get_response(query: dict):
             empty_query = get_response(get_empty_query())
             empty_query['message'] = query['message'] + empty_query['message']
             return empty_query
-
         else:
-
             previous_query = query['history'].pop()
             query['current_query'] = previous_query
             query['message'] += get_question(previous_query)
@@ -372,9 +387,7 @@ def get_response(query: dict):
         if valid:
 
             query['departure'] = query['message']
-
         else:
-
             query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
                                 'Type undo if you previously entered the wrong station or re-enter if you made a'
                                 'mistake')
@@ -390,9 +403,7 @@ def get_response(query: dict):
         if valid:
 
             query['destination'] = query['message']
-
         else:
-
             query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
                                 'Type undo if you previously entered the wrong station or re-enter if you made a'
                                 'mistake')
@@ -431,7 +442,35 @@ def get_response(query: dict):
 
         if valid:
 
-            query['return_date'] = result
+            date = datetime.strptime(query['date'], '%d/%m/%Y')
+            return_date = datetime.strptime(result, '%d/%m/%Y')
+
+            # make sure the original date is before or same as the return
+            valid = not (date > return_date)
+
+            if valid:
+
+
+                if query['return_time'] is not None and date == return_date:
+
+                    time = datetime.strptime(query['time'], '%H:%M:%S')
+                    return_time = datetime.strptime(query['return_time'], '%H:%M:%S')
+
+                    valid = not (time >= return_time)
+
+                if valid:
+
+                    query['return_date'] = result
+                else:
+                    query['message'] \
+                        = ('Sorry, but the return date and time cannot be before the departure date and time. '
+                           'Type undo if you previously entered the wrong station or re-enter if you made a'
+                           'mistake')
+            else:
+                query['message'] \
+                    = ('Sorry, but the return date cannot be before the departure date. '
+                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'mistake')
         else:
             query['message'] = result
 
@@ -483,25 +522,27 @@ def get_response(query: dict):
             responses.append(get_question('date'))
             current_queries.append('date')
 
+        # do not ask the following questions until the previous are ready
+        if len(responses) == 0:
 
-        if query['return'] is None:
+            if query['return'] is None:
 
-            responses.append(get_question('return'))
-            current_queries.append('return')
-
-
-        if (query['return'] is True and
-                query['return_time'] is None):
-
-            responses.append(get_question('return_time'))
-            current_queries.append('return_time')
+                responses.append(get_question('return'))
+                current_queries.append('return')
 
 
-        if (query['return'] is True and
-                query['return_date'] is None):
+            if (query['return'] is True and
+                    query['return_time'] is None):
 
-            responses.append(get_question('return_date'))
-            current_queries.append('return_date')
+                responses.append(get_question('return_time'))
+                current_queries.append('return_time')
+
+
+            if (query['return'] is True and
+                    query['return_date'] is None):
+
+                responses.append(get_question('return_date'))
+                current_queries.append('return_date')
 
 
         print(query)
@@ -514,12 +555,12 @@ def get_response(query: dict):
                 query['destination'],
                 query['date'],
                 query['time'],
-                False,)
+                query['return'],
+                query['return_time'],
+                query['return_date'],)
 
             query['current_query'] = 'done'
-
         else:
-
             response_index = random.randint(0, len(responses) - 1)
 
             query['message'] = responses[response_index]
