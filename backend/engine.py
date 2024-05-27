@@ -481,7 +481,27 @@ def get_response(query: dict):
 
         if valid:
 
-            query['return_time'] = result
+            if query['return_date']:
+
+                date = datetime.strptime(query['date'], '%d/%m/%Y')
+                return_date = datetime.strptime(result, '%d/%m/%Y')
+
+                if date == return_date:
+
+                    time = datetime.strptime(query['time'], '%H:%M:%S')
+                    return_time = datetime.strptime(result, '%H:%M:%S')
+
+                    valid = not (time >= return_time)
+
+
+            if valid:
+
+                query['return_time'] = result
+            else:
+                query['message'] \
+                    = ('Sorry, but the return date and time cannot be before the departure date and time. '
+                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'mistake')
         else:
             query['message'] = result
 
@@ -532,17 +552,17 @@ def get_response(query: dict):
 
 
             if (query['return'] is True and
-                    query['return_time'] is None):
-
-                responses.append(get_question('return_time'))
-                current_queries.append('return_time')
-
-
-            if (query['return'] is True and
                     query['return_date'] is None):
 
                 responses.append(get_question('return_date'))
                 current_queries.append('return_date')
+
+
+            if (query['return'] is True and
+                    query['return_time'] is None):
+
+                responses.append(get_question('return_time'))
+                current_queries.append('return_time')
 
 
         print(query)
