@@ -100,10 +100,11 @@ def scrape(destination :str,
   except Exception as e:
     return e
 
-def test_harness():
+def TestHarness():
   print(scrape("NRW", "LST", "10/06/2024", "15:00:00", False, "", ""))
+  print(scrape("NRW", "LST", "10/06/2024", "15:00:00", True, "20/06/2024", "16:00:00"))
 
 
 if __name__ == "__main__":
-  test_harness()
+  TestHarness()
 

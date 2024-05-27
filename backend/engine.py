@@ -22,9 +22,11 @@ station_names_path = "data/stations.csv"
 station_codes = {}
 
 with open(station_names_path) as file:
+
     reader = csv.DictReader(file)
 
     for row in reader:
+
         key = row['name']
         value = row['tiploc']
 
@@ -141,13 +143,12 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
     with open('historical-data/station_dict.pkl', 'rb') as file:
         station_dict = pickle.load(file)
 
-
-    dep_station = convert_station_name(dep_station)[0]
-    arr_station = convert_station_name(arr_station)[0]
+    dep_station = station_codes[dep_station.upper()]
+    arr_station = station_codes[arr_station.upper()]
 
     details, url = scrape(
-        dep_station,
         arr_station,
+        dep_station,
         dep_date,
         dep_time,
         False,
@@ -159,8 +160,8 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
         print(return_time, return_date)
 
         details, url = scrape(
-            dep_station,
             arr_station,
+            dep_station,
             dep_date,
             dep_time,
             True,
@@ -307,6 +308,35 @@ def try_convert_date(message: str):
                                 "or even the day of the week (For example, today or Tuesday)!")
 
 
+def try_convert_station_name(message: str):
+
+    station_code, multiple_found = convert_station_name(message)
+
+    # if the user has not used a one word answer
+    if station_code is None:
+
+        for ent in nlp(message).ents:
+
+            station_code, multiple_found = convert_station_name(ent.text)
+
+            if station_code is not None:
+
+                message = station_code
+                multiple_found = False
+
+
+    if multiple_found:
+
+        message = 'Did you mean any of the following stations:'
+
+        for code in station_code:
+
+            message += f" {code},"
+
+
+    return message, not multiple_found
+
+
 def get_empty_query():
 
     return {
@@ -379,34 +409,40 @@ def get_response(query: dict):
 
     if query['current_query'] == "departure":
 
-        if query['destination'] is not None:
-
-            valid = query['message'] != query['destination']
-
+        query['message'], valid = try_convert_station_name(query['message'])
 
         if valid:
 
-            query['departure'] = query['message']
-        else:
-            query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
-                                'Type undo if you previously entered the wrong station or re-enter if you made a'
-                                'mistake')
+            if query['destination'] is not None:
+
+                valid = query['message'] != query['destination']
+
+            if valid:
+
+                query['departure'] = query['message']
+            else:
+                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
+                                    'mistake')
 
 
     elif query['current_query'] == "destination":
 
-        if query['departure'] is not None:
-
-            valid = query['departure'] != query['message']
-
+        query['message'], valid = try_convert_station_name(query['message'])
 
         if valid:
 
-            query['destination'] = query['message']
-        else:
-            query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
-                                'Type undo if you previously entered the wrong station or re-enter if you made a'
-                                'mistake')
+            if query['destination'] is not None:
+
+                valid = query['message'] != query['departure']
+
+            if valid:
+
+                query['destination'] = query['message']
+            else:
+                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
+                                    'mistake')
 
 
     elif query['current_query'] == "date":
@@ -484,7 +520,7 @@ def get_response(query: dict):
             if query['return_date']:
 
                 date = datetime.strptime(query['date'], '%d/%m/%Y')
-                return_date = datetime.strptime(result, '%d/%m/%Y')
+                return_date = datetime.strptime(query['return_date'], '%d/%m/%Y')
 
                 if date == return_date:
 
@@ -551,18 +587,19 @@ def get_response(query: dict):
                 current_queries.append('return')
 
 
-            if (query['return'] is True and
-                    query['return_date'] is None):
+            # do not ask the following questions until the previous are ready
+            if len(responses) == 0 and query['return']:
 
-                responses.append(get_question('return_date'))
-                current_queries.append('return_date')
+                if query['return_date'] is None:
+
+                    responses.append(get_question('return_date'))
+                    current_queries.append('return_date')
 
 
-            if (query['return'] is True and
-                    query['return_time'] is None):
+                if query['return_time'] is None:
 
-                responses.append(get_question('return_time'))
-                current_queries.append('return_time')
+                    responses.append(get_question('return_time'))
+                    current_queries.append('return_time')
 
 
         print(query)
