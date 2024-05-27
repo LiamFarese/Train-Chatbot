@@ -540,10 +540,40 @@ def get_response(user_input: str):
 
             fact_strings.append('')
 
+#
+#        if len(responses) == 0:
+#
+#            if context.return_ticket is None:
+#
+#                responses.append(random.choice([
+#
+#                    "Will you be getting a return ticket?",
+#                ]))
+#
+#                fact_strings.append('')
+#
+#            elif context.return_ticket is True:
+#
+#                if context.return_time is None:
+#
+#                    responses.append(random.choice([
+#
+#                        "What time will you be returning?",
+#                    ]))
+#
+#
+#                if context.return_date is None:
+#
+#                    responses.append(random.choice([
+#
+#                        "What date will you be returning?",
+#                    ]))
+
 
         if len(responses) == 0:
 
             response = "All facts acquired!"
+            fact_string = ''
 
         else:
 
@@ -553,16 +583,21 @@ def get_response(user_input: str):
             fact_string = fact_strings[response_index]
 
 
-    return response, f'{context.to_string()}{fact_string}'
+    return response, f'{context.to_string()}{fact_string} '
 
 
 class Context:
 
     def __init__(self, string: str):
 
-        print(string)
-
         string_nlp = nlp(string)
+
+        if 'return' in string:
+
+            string_nlp = nlp(string[0:string.index('return')])
+
+            self.return_ticket = 'not' in string
+
 
         self.return_ticket =\
             self.time =\
@@ -574,6 +609,7 @@ class Context:
             self.error_message = None
 
         self.extraction_order = []
+
 
         # Extract entities
         entities = [(ent.text, ent.label_) for ent in string_nlp.ents]
@@ -598,31 +634,34 @@ class Context:
                         self.destination = ent[0]
 
 
-        if any((token.text.lower() == ("return" or "yes")) for token in string_nlp):
-
-            self.extraction_order.append('return')
-            self.return_ticket = True
-
-        if any((token.text.lower() == "no") for token in string_nlp):
-
-            self.extraction_order.append('return')
-            self.return_ticket = False
-
-
         time_tokens = []
+
         # Extract time and date
         for token in string_nlp:
 
-            if token.ent_type_ == "DATE":
+            try:
 
                 if self.date is None:
 
-                    self.extraction_order.append('date')
                     self.date = convert_date(token.text)
 
-            elif token.ent_type_ == "TIME" and self.time is None:
+            except ValueError:
 
-                time_tokens.append(token.text)
+                pass
+
+
+            if token.ent_type_ == "TIME" or token.ent_type_ == "DATE":
+
+                if token.ent_type_ == "DATE":
+
+                    if self.date is None:
+
+                        self.extraction_order.append('date')
+                        self.date = convert_date(token.text)
+
+                elif self.time is None:
+
+                    time_tokens.append(token.text)
 
 
         time_str = ''.join(time_tokens)
@@ -667,15 +706,19 @@ class Context:
 
         if self.return_ticket is True:
 
-            string += f'as a {self.return_ticket} '
+            string += f'return:true'
 
             if self.return_time is not None:
 
-                string += f'{self.return_time} '
+                string += f'return-time:{self.return_time}'
 
             if self.return_date is not None:
 
-                string += f'{self.return_date} '
+                string += f'return-date:{self.return_date}'
+
+        elif self.return_ticket is False:
+
+            string += f'return:false'
 
 
         return string
@@ -689,7 +732,7 @@ def TestHarness():
     while True:
 
         print(response)
-        message = f'{context} {input()}'
+        message = f'{context}{input()}'
         response, context = get_response(message)
 
 
