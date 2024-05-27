@@ -22,9 +22,11 @@ station_names_path = "data/stations.csv"
 station_codes = {}
 
 with open(station_names_path) as file:
+
     reader = csv.DictReader(file)
 
     for row in reader:
+
         key = row['name']
         value = row['tiploc']
 
@@ -107,10 +109,10 @@ def extract_entities(user_input):
 
     if any((token.text.lower() == ("return" or "yes"))for token in user_input):
         return_ticket = True
-    
+
     if any((token.text.lower() == "no" )for token in user_input):
         return_ticket = False
-        
+
     time_tokens = []
     # Extract time and date
     for token in user_input:
@@ -132,7 +134,7 @@ def extract_entities(user_input):
 
 
 def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
-                     return_ticket=False, return_time=None, return_date=None):
+                     return_ticket=False, return_time='', return_date=''):
 
     with open('model.pickle', 'rb') as file:
         model = pickle.load(file)
@@ -141,15 +143,38 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
     with open('historical-data/station_dict.pkl', 'rb') as file:
         station_dict = pickle.load(file)
 
-
-    dep_station = convert_station_name(dep_station)[0]
-    arr_station = convert_station_name(arr_station)[0]
+    dep_station = station_codes[dep_station.upper()]
+    arr_station = station_codes[arr_station.upper()]
 
     details, url = scrape(
-        dep_station,
         arr_station,
-        dep_date, dep_time, False, "", "")
+        dep_station,
+        dep_date,
+        dep_time,
+        False,
+        '',
+        '')
 
+    if return_ticket:
+
+        print(type(arr_station),
+              type(dep_station),
+              type(dep_date),
+              type(dep_time),
+              type(True),
+              type(return_time),
+              type(return_date))
+
+        details, url = scrape(
+            arr_station,
+            dep_station,
+            dep_date,
+            dep_time,
+            True,
+            return_time,
+            return_date)
+
+    print(details)
 
     dep_dt = dt.datetime.strptime(details[0], '%Y-%m-%d %H:%M:%S')
 
@@ -161,11 +186,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
     first_stop  = 0
     second_stop = 0
 
-    print(dep_station)
-    print(arr_station)
-
-    print(station_dict)
-
     if dep_station in station_dict:
 
         first_stop = station_dict[dep_station]
@@ -174,9 +194,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
     if arr_station in station_dict:
 
         second_stop = station_dict[arr_station]
-
-
-    print(f"{first_stop}, {second_stop}")
 
 
     predicted_delay = model.predict([[
@@ -202,633 +219,473 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
         f"{url}")
 
 
-class Book(Fact):
+def get_question(query):
 
-    """
-    dep_station = Departure Station
-    arr_station = Arrival Station
-    dep_date = Departure Date
-    dep_time = Departure Time
+    question = 'Invalid query type. '
 
-    return_ticket = Return Ticket
-    return_date = Return Date
-    return_time = Return Time
-    """
+    if query == 'departure':
 
-    pass
-        
-class TrainBot(KnowledgeEngine):
-    def __init__(self):
-        super().__init__()
-        self.response = None
+        question = random.choice([
 
-    def run_with_response(self):
-        self.response = None
-        self.run()
-        return self.response
+            "From which station would you like to depart?",
+            "Which station will you be departing from?",
+            "What is the name of the station you will be departing from?"
+        ])
 
-    # if the user types "undo", delete the last fact
-    def check_undo(self, user_input):
+    elif query == 'destination':
 
-        user_input = user_input.lower()
+        question = random.choice([
 
-        if "undo" in user_input:
+            "Which station would you like to go to?",
+            "Which station will you be arriving at?",
+            "What is the name of the station of arrival?",
+        ])
 
-            remove_key = list(self.facts.keys())[-1]
-            remove_fact = self.facts[remove_key]
-            self.retract(remove_fact)
-            print(self.facts)
-            return True
+    elif query == 'time':
 
-        # unsuccessful
-        return False
+        question = random.choice([
 
+            "What time would you like to depart?",
+            "When in the day will you be departing?",
+            "At what hour will you depart?",
+        ])
 
-    # station clarification used in multiple functions
-    def clarify_station(self, is_departure, other_station=None):
+    elif query == 'date':
 
-        station_code = None
-        multiple_found = True
+        question = random.choice([
 
-        # get words to say in print so arrival and departure can be unified
-        ing = "departing" if is_departure else "arriving"
+            "What day will you be leaving?",
+            "What will be the date of your departure?",
+            "What day are you going to get the train?",
+        ])
 
-        while station_code is None or multiple_found or station_code == other_station:
+    elif query == 'return':
 
-            city = input(f"Which station will you be {ing} from?\n\t")
+        question = random.choice([
 
-            if self.check_undo(city):
-                return None
+            "Would you like a return ticket?",
+        ])
 
-            station_code, multiple_found = convert_station_name(city)
+    elif query == 'return_time':
 
-            # if the user has not used a one word answer
-            if station_code is None:
+        question = random.choice([
 
-                for ent in nlp(city).ents:
+            "What time would you like to return?",
+        ])
 
-                    station_code, multiple_found = convert_station_name(ent.text)
+    elif query == 'return_date':
 
-                    if station_code is not None:
+        question = random.choice([
 
-                        return ent
+            "What date would you like to return?",
+        ])
 
 
-            if multiple_found:
-
-                print(f"Which station in {city}?...\n")
-
-                for code in station_code:
-
-                    print(f"- {code}?")
+    return question
 
 
-            if station_code == other_station:
+def try_extract_if_valid(message: str, extract_func, warning: str):
 
-                print("Sorry, but you cannot arrive and depart from the same station. ")
+    for word in message.split():
+
+        try:
+
+            return True, extract_func(word)
+
+        except:
+            pass
 
 
-        if station_code is not None:
+    return False, warning
 
-            return city
+
+def try_convert_time(message: str):
+
+    return try_extract_if_valid(message, convert_time,
+                                "The time you entered is in an invalid format. "
+                                "Perhaps try a single word answer, or try hour.minute! "
+                                "For example, 3.45pm.")
+
+
+def try_convert_date(message: str):
+
+    return try_extract_if_valid(message, convert_date,
+                                "The date you entered is in an invalid format. Perhaps try a single word answer,"
+                                "or try day/month/year (For example, 25/05/24),"
+                                "or even the day of the week (For example, today or Tuesday)!")
+
+
+def try_convert_station_name(message: str):
+
+    station_code, multiple_found = convert_station_name(message)
+
+    # if the user has not used a one word answer
+    if station_code is None:
+
+        for ent in nlp(message).ents:
+
+            station_code, multiple_found = convert_station_name(ent.text)
+
+            if station_code is not None:
+
+                message = station_code
+                multiple_found = False
+
+
+    if multiple_found:
+
+        message = 'Did you mean any of the following stations:'
+
+        for code in station_code:
+
+            message += f" {code},"
+
+
+    return message, not multiple_found
+
+
+def get_empty_query():
+
+    return {
+
+        'message': None,
+        'current_query': None,
+
+        'departure': None,
+        'destination': None,
+        'time': None,
+        'date': None,
+
+        'return': None,
+        'return_time': None,
+        'return_date': None,
+
+        'history': [],
+    }
+
+
+def get_response(query: dict):
+
+    valid = query['current_query'] is not None
+
+    if query['current_query'] is None:
+
+        if query['message'] is not None:
+
+            (query['return'], query['time'], query['date'], query['departure'],
+             query['destination']) = extract_entities(nlp(query['message']))
+
+
+            valid = True
+
+
+        response = random.choice([
+
+            "Hello! What sort of journey will you be making?",
+            "Hi! How can I help you today?",
+            "Hey! What journey are you looking to make?",
+        ])
+
+        response += ' (' + random.choice([
+
+            "Make sure to check the Help button at the top right if you don’t know where to start!",
+            "Press the Help button at the top right for guidance!",
+            "Use the help button in the top right if you need advice!",
+        ]) + ')'
+
+        query['message'] = response
+
+
+    # undoing #
+
+    if 'undo' in query['message'] and not ("don't" or "dont" or "not") in query['message']:
+
+        query['message'] = 'Okay. We have undone the previous message.\n\n'
+
+        if len(query['history']) == 0:
+
+            empty_query = get_response(get_empty_query())
+            empty_query['message'] = query['message'] + empty_query['message']
+            return empty_query
         else:
-            return None
+            previous_query = query['history'].pop()
+            query['current_query'] = previous_query
+            query['message'] += get_question(previous_query)
+            return query
 
 
-    @Rule(AND(NOT(Book(dep_station=W())),
-          NOT(Book(arr_station=W()))))
-    def _get_dep_station(self):
-        if self.response is None:
-            self.response = "Which station will you be departing from?"
-        # station_code = None
+    # query resetting #
 
-        # while station_code is None:
+    if query['current_query'] == 'reset':
 
-        #     station_code = self.clarify_station(True)
+        if 'yes' in query['message']:
 
+            query = get_empty_query()
+            query['message'] = "Okay. We have reset the query for you... Type in your new query..."
+        else:
+            query['message'] = "Nevermind, we have not reset your query! Answer the previous question..."
 
-        # self.declare(Book(dep_station=station_code))
+            if len(query['history']) > 0:
 
-
-    @Rule(NOT(Book(dep_station=W())),
-          Book(arr_station=MATCH.arr_station))
-    def _get_dep_station_check_arr_station(self, arr_station):
-
-        station_code = None
-
-        while station_code is None:
-
-            station_code = self.clarify_station(True, arr_station)
+                query['current_query'] = query['history'].pop()
+            else:
+                query['current_query'] = None
 
 
-        self.declare(Book(dep_station=station_code))
+        return query
 
 
-    # get Arrival Station #
+    if 'reset' in query['message'] and not ("don't" or "dont" or "not") in query['message']:
+
+        if query['current_query'] is not None:
+
+            query['history'].insert(0, query['current_query'])
 
 
-    @Rule(AND(NOT(Book(dep_station=W())),
-          NOT(Book(arr_station=W()))))
-    def get_arr_station(self):
-        if self.response is None:
-            self.response = "Which station will you be arriving at?"
-        # station_code = None
+        query['message'] = 'Are you sure? (yes or no)'
+        query['current_query'] = 'reset'
 
-        # while station_code is None:
-
-        #     station_code = self.clarify_station(False)
+        return query
 
 
-        # self.declare(Book(arr_station=station_code))
+    # validate responses #
+
+    if query['current_query'] == "departure":
+
+        query['message'], valid = try_convert_station_name(query['message'])
+
+        if valid:
+
+            if query['destination'] is not None:
+
+                valid = query['message'] != query['destination']
+
+            if valid:
+
+                query['departure'] = query['message']
+            else:
+                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
+                                    'mistake')
 
 
-    @Rule(NOT(Book(arr_station=W())),
-          Book(dep_station=MATCH.dep_station))
-    def get_arr_station_check_dep_station(self, dep_station):
+    elif query['current_query'] == "destination":
 
-        station_code = None
+        query['message'], valid = try_convert_station_name(query['message'])
 
-        while station_code is None:
+        if valid:
 
-            station_code = self.clarify_station(False, dep_station)
+            if query['destination'] is not None:
 
+                valid = query['message'] != query['departure']
 
-        self.declare(Book(arr_station=station_code))
+                
+            if valid:
 
-
-    @Rule(NOT(Book(dep_time=W())))
-    def get_dep_time(self):
-        if self.response is None:
-            self.response = "Sorry, we didn't get the time. What time will you be departing?\n\t"
-
-    @Rule(NOT(Book(dep_date=W())))
-    def get_dep_date(self):
-        if self.response is None:
-            self.response = "What date will you be departing?\n\t"
-
-    @Rule(NOT(Book(return_ticket=W())))
-    def get_return(self):
-        if self.response is None:
-            self.response = "Will you be returning? (yes or no)\n\t"
-
-    @Rule(
-        Book(return_ticket=True),
-        Book(dep_date=MATCH.dep_date),
-        NOT(Book(return_date=W())))
-    def get_return_date(self, dep_date):
-        if self.response is None:
-            self.response = "What date will you be returning?\n\t"
+                query['destination'] = query['message']
+            else:
+                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
+                                    'mistake')
 
 
-    # cannot occur without the date being set
-    @Rule(
-        Book(return_ticket=True),
-        Book(return_date=MATCH.return_date),
-        Book(dep_date=MATCH.dep_date),
-        Book(dep_time=MATCH.dep_time),
-        NOT(Book(return_time=W())))
-    def get_return_time(self, return_date, dep_date, dep_time):
-        if self.response is None:
-            self.response = "What time will you depart for your return?\n\t"
+    elif query['current_query'] == "date":
 
-    # if every information has been filled out
-    @Rule(
-        Book(return_time=MATCH.return_time),
-        Book(return_date=MATCH.return_date),
-        Book(dep_time=MATCH.dep_time),
-        Book(dep_date=MATCH.dep_date),
-        Book(dep_station=MATCH.dep_station),
-        Book(arr_station=MATCH.arr_station),)
-    def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
-        if self.response is None:
+        valid, result = try_convert_date(query['message'])
 
-            self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
-              f"{dep_time}? And it will be a return on {return_date} at {return_time}? "
-              f"Okay lol don't need to get so worked up about it... \n\n" + scrape_to_string(
-                dep_station,
-                arr_station,
-                dep_date, dep_time, True, return_time, return_date))
+        if valid:
+
+            query['date'] = result
+        else:
+            query['message'] = result
 
 
-    # if every information has been filled out
-    @Rule(
-        Book(return_ticket=False),
-        Book(dep_time=MATCH.dep_time),
-        Book(dep_date=MATCH.dep_date),
-        Book(dep_station=MATCH.dep_station),
-        Book(arr_station=MATCH.arr_station),)
-    def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
-        if self.response is None:
+    elif query['current_query'] == "time":
 
-            self.response = (f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
-                f"{dep_time}? And it will be a return on And it won't be a return? "
-                f"Okay lol don't need to get so worked up about it... \n\n " + scrape_to_string(
-                    dep_station,
-                    arr_station,
-                    dep_date, dep_time, False, "", ""))
+        valid, result = try_convert_time(query['message'])
 
-class Context:
-    def __init__(self, return_ticket :str , time :str, date :str, departure :str, destination :str, return_time :str, return_date :str):
-        self.return_ticket = return_ticket
-        self.time = time
-        self. date = date
-        self.departure = departure
-        self.destination = destination
-        self.return_time = return_time
-        self.return_date = return_date
+        if valid:
 
-def bot_response(message: str, context: Context):
-    return_time = return_date = None
-    if context.destination and context.time and context.return_ticket and context.departure and context.date is not None:
-        _, return_time, return_date, _, _ = extract_entities(nlp(message))
+            query['time'] = result
+        else:
+            query['message'] = result
 
-    return_ticket, time, date, departure, destination = extract_entities(nlp(message))
-    print(return_ticket, time, date, departure, destination)
 
-    if context.return_ticket is not None:
-        return_ticket = context.return_ticket
+    elif query['current_query'] == "return":
 
-    if context.time is not None:
-        time = context.time
+        query['return'] = ('yes' or 'affirmative' or 'sure') in query['message']
 
-    if context.date is not None:
-        date = context.date
 
-    if context.departure is not None:
-        departure = context.departure
-    
-    if context.destination is not None:
-        destination = context.destination
-    
-    bot = TrainBot()
-    bot.reset()
-    if return_ticket is not None:
-        bot.declare(Book(return_ticket=return_ticket))
-    if time is not None:
-        bot.declare(Book(dep_time= time))
-    if date is not None:
-        bot.declare(Book(dep_date = date))
-    if departure is not None:
-        bot.declare(Book(dep_station = departure))
-    if destination is not None:
-        bot.declare(Book(arr_station = destination))
+    elif query['current_query'] == "return_date":
 
-    if return_time is not None:
-        bot.declare(Book(return_time=return_time))
-    if return_date is not None:
-        bot.declare(Book(return_date=return_date))
+        valid, result = try_convert_date(query['message'])
 
-    print(bot.facts)
-    message = bot.run_with_response()
-    return message, Context(return_ticket, time, date, departure, destination, return_time, return_date)
-    
+        if valid:
+
+            date = datetime.strptime(query['date'], '%d/%m/%Y')
+            return_date = datetime.strptime(result, '%d/%m/%Y')
+
+            # make sure the original date is before or same as the return
+            valid = not (date > return_date)
+
+            if valid:
+
+
+                if query['return_time'] is not None and date == return_date:
+
+                    time = datetime.strptime(query['time'], '%H:%M:%S')
+                    return_time = datetime.strptime(query['return_time'], '%H:%M:%S')
+
+                    valid = not (time >= return_time)
+
+                if valid:
+
+                    query['return_date'] = result
+                else:
+                    query['message'] \
+                        = ('Sorry, but the return date and time cannot be before the departure date and time. '
+                           'Type undo if you previously entered the wrong station or re-enter if you made a'
+                           'mistake')
+            else:
+                query['message'] \
+                    = ('Sorry, but the return date cannot be before the departure date. '
+                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'mistake')
+        else:
+            query['message'] = result
+
+
+    elif query['current_query'] == "return_time":
+
+        valid, result = try_convert_time(query['message'])
+
+        if valid:
+
+            if query['return_date']:
+
+                date = datetime.strptime(query['date'], '%d/%m/%Y')
+                return_date = datetime.strptime(query['return_date'], '%d/%m/%Y')
+
+                if date == return_date:
+
+                    time = datetime.strptime(query['time'], '%H:%M:%S')
+                    return_time = datetime.strptime(result, '%H:%M:%S')
+
+                    valid = not (time >= return_time)
+
+
+            if valid:
+
+                query['return_time'] = result
+            else:
+                query['message'] \
+                    = ('Sorry, but the return date and time cannot be before the departure date and time. '
+                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'mistake')
+        else:
+            query['message'] = result
+
+
+    if valid:
+
+        if query['current_query'] is not None:
+
+            query['history'].insert(0, query['current_query'])
+
+
+        responses = []
+        current_queries = []
+
+
+        # get questions #
+
+        if query['departure'] is None:
+
+            responses.append(get_question('departure'))
+            current_queries.append('departure')
+
+
+        if query['destination'] is None:
+
+            responses.append(get_question('destination'))
+            current_queries.append('destination')
+            
+
+        if query['time'] is None:
+
+            responses.append(get_question('time'))
+            current_queries.append('time')
+
+
+        if query['date'] is None:
+
+            responses.append(get_question('date'))
+            current_queries.append('date')
+
+        # do not ask the following questions until the previous are ready
+        if len(responses) == 0:
+
+            if query['return'] is None:
+
+                responses.append(get_question('return'))
+                current_queries.append('return')
+
+
+            # do not ask the following questions until the previous are ready
+            if len(responses) == 0 and query['return']:
+
+                if query['return_date'] is None:
+
+                    responses.append(get_question('return_date'))
+                    current_queries.append('return_date')
+
+
+                if query['return_time'] is None:
+
+                    responses.append(get_question('return_time'))
+                    current_queries.append('return_time')
+
+
+        # if no questions to get, return ticket
+        if len(responses) == 0:
+
+            message = scrape_to_string(
+                query['departure'],
+                query['destination'],
+                query['date'],
+                query['time'],
+                query['return'],
+                query['return_time'],
+                query['return_date'],) + \
+                "\nIf you would like to ask for another ticket, simply enter it below: "
+
+
+            query = get_empty_query()
+            query['message'] = message
+        else:
+            response_index = random.randint(0, len(responses) - 1)
+
+            query['message'] = responses[response_index]
+            query['current_query'] = current_queries[response_index]
+
+
+    return query
+
 
 # test harness to prove it works
 def TestHarness():
-    print("Hello! \n")
-    context = Context(None, None, None, None, None, None, None)
+
+    query = get_empty_query()
+    query = get_response(query)
+
     while True:
-        message = input()
-        response, context = bot_response(message, context)
-        print(response)
+
+        print(query['message'])
+        query['message'] = input().lower()
+        query = get_response(query)
 
 # if running this file, run the test harness
 if __name__ == '__main__':
+
     TestHarness()
 
-
-# class TrainBot(KnowledgeEngine):
-
-#     # if the user types "undo", delete the last fact
-#     def check_undo(self, user_input):
-
-#         user_input = user_input.lower()
-
-#         if "undo" in user_input:
-
-#             remove_key = list(self.facts.keys())[-1]
-#             remove_fact = self.facts[remove_key]
-#             self.retract(remove_fact)
-#             print(self.facts)
-#             return True
-
-#         # unsuccessful
-#         return False
-
-
-#     # station clarification used in multiple functions
-#     def clarify_station(self, is_departure, other_station=None):
-
-#         station_code = None
-#         multiple_found = True
-
-#         # get words to say in print so arrival and departure can be unified
-#         ing = "departing" if is_departure else "arriving"
-
-#         while station_code is None or multiple_found or station_code == other_station:
-
-#             city = input(f"Which station will you be {ing} from?\n\t")
-
-#             if self.check_undo(city):
-#                 return None
-
-#             station_code, multiple_found = convert_station_name(city)
-
-#             # if the user has not used a one word answer
-#             if station_code is None:
-
-#                 for ent in nlp(city).ents:
-
-#                     station_code, multiple_found = convert_station_name(ent.text)
-
-#                     if station_code is not None:
-
-#                         return ent
-
-
-#             if multiple_found:
-
-#                 print(f"Which station in {city}?...\n")
-
-#                 for code in station_code:
-
-#                     print(f"- {code}?")
-
-
-#             if station_code == other_station:
-
-#                 print("Sorry, but you cannot arrive and depart from the same station. ")
-
-
-#         if station_code is not None:
-
-#             return city
-#         else:
-#             return None
-
-
-#     @DefFacts()
-#     def _initial_action(self):
-
-#         return_ticket, time, date, departure, destination = extract_entities(nlp(input("Hello!\n\t")))
-
-#         if return_ticket is not None:
-
-#             yield Book(return_ticket=return_ticket)
-
-#         if time is not None:
-
-#             yield Book(dep_time=time)
-
-#         if date is not None:
-
-#             yield Book(dep_date=date)
-
-#         if departure is not None:
-
-#             if convert_station_name(departure)[0] is not None and convert_station_name(departure)[1] is False:
-
-#                 yield Book(dep_station=departure)
-
-#         if destination is not None:
-
-#             if convert_station_name(destination)[0] is not None and convert_station_name(destination)[1] is False:
-
-#                 yield Book(arr_station=destination)
-
-
-#     # get Departure Station #
-
-
-#     @Rule(AND(NOT(Book(dep_station=W())),
-#           NOT(Book(arr_station=W()))))
-#     def _get_dep_station(self):
-
-#         station_code = None
-
-#         while station_code is None:
-
-#             station_code = self.clarify_station(True)
-
-
-#         self.declare(Book(dep_station=station_code))
-
-
-#     @Rule(NOT(Book(dep_station=W())),
-#           Book(arr_station=MATCH.arr_station))
-#     def _get_dep_station_check_arr_station(self, arr_station):
-
-#         station_code = None
-
-#         while station_code is None:
-
-#             station_code = self.clarify_station(True, arr_station)
-
-
-#         self.declare(Book(dep_station=station_code))
-
-
-#     # get Arrival Station #
-
-
-#     @Rule(AND(NOT(Book(dep_station=W())),
-#           NOT(Book(arr_station=W()))))
-#     def get_arr_station(self):
-
-#         station_code = None
-
-#         while station_code is None:
-
-#             station_code = self.clarify_station(False)
-
-
-#         self.declare(Book(arr_station=station_code))
-
-
-#     @Rule(NOT(Book(arr_station=W())),
-#           Book(dep_station=MATCH.dep_station))
-#     def get_arr_station_check_dep_station(self, dep_station):
-
-#         station_code = None
-
-#         while station_code is None:
-
-#             station_code = self.clarify_station(False, dep_station)
-
-
-#         self.declare(Book(arr_station=station_code))
-
-
-#     @Rule(NOT(Book(dep_time=W())))
-#     def get_dep_time(self):
-      
-#         time_tokens = []
-#         for token in nlp(input("Sorry, we didn't get the time. What time will you be departing?\n\t")):
-
-#             if token.ent_type_ == "TIME":
-#                 time_tokens.append(token.text)
-                
-#         time_str = ''.join(time_tokens)
-#         if time_str != '':
-#             self.declare(Book(dep_time=str(convert_time(time_str))))
-
-
-#     @Rule(NOT(Book(dep_date=W())))
-#     def get_dep_date(self):
-
-#         dep_date = None
-
-#         while dep_date is None:
-
-#             user_input = input("What date will you be departing?\n\t")
-
-#             if self.check_undo(user_input):
-#                 return
-
-#             for token in nlp(user_input):
-
-#                 if token.ent_type_ == "DATE":
-
-#                     dep_date = str(convert_date(token.text))
-#                     break
-
-#             if dep_date is None:
-
-#                 print("Sorry, that date is invalid. ")
-
-
-#         self.declare(Book(dep_date=dep_date))
-
-
-#     @Rule(NOT(Book(return_ticket=W())))
-#     def get_return(self):
-
-#         user_input = input("Will you be returning? (yes or no)\n\t").lower()
-
-#         if self.check_undo(user_input):
-#             return
-
-#         return_ticket = "yes" in user_input or "will be" in user_input
-
-#         self.declare(Book(return_ticket=return_ticket))
-
-
-#     @Rule(
-#         Book(return_ticket=True),
-#         Book(dep_date=MATCH.dep_date),
-#         NOT(Book(return_date=W())))
-#     def get_return_date(self, dep_date):
-
-#         return_date = None
-#         departure_date = convert_date(dep_date)
-
-#         while return_date is None:
-
-#             user_input = input("What date will you be returning?\n\t")
-
-#             if self.check_undo(user_input):
-#                 return
-
-#             for token in nlp(user_input):
-
-#                 if token.ent_type_ == "DATE":
-
-#                     return_date = str(convert_date(token.text))
-#                     break
-
-#             if return_date is not None:
-
-#                 if return_date < departure_date:
-
-#                     print("Sorry, the return date cannot be before the departure date. ")
-#                     return_date = None
-#             else:
-
-#                 print("Sorry, that date is invalid. ")
-
-#         self.declare(Book(return_date=return_date))
-
-
-#     # cannot occur without the date being set
-#     @Rule(
-#         Book(return_ticket=True),
-#         Book(return_date=MATCH.return_date),
-#         Book(dep_date=MATCH.dep_date),
-#         Book(dep_time=MATCH.dep_time),
-#         NOT(Book(return_time=W())))
-#     def get_return_time(self, return_date, dep_date, dep_time):
-
-#         return_time = None
-#         check_time = return_date == dep_date
-#         departure_time = convert_time(dep_time)
-
-#         while return_time is None:
-
-#             user_input = input("What time will you depart for your return?\n\t")
-
-#             if self.check_undo(user_input):
-#                 return
-
-#             time_tokens = []
-#             for token in nlp(user_input):
-
-#                 if token.ent_type_ == "TIME":
-#                     time_tokens.append(token.text)
-#                     time_str = ''.join(time_tokens)
-#                 if time_str != '':
-#                     return_time = time_str
-
-#             if return_time is not None:
-
-#                 if check_time and return_time <= departure_time:
-
-#                     print("Sorry, the return time cannot be before the departure time if they are on the same day. ")
-#                     return_time = None
-#             else:
-
-#                 print("Sorry, that time is invalid. ")
-
-#         self.declare(Book(return_time=return_time))
-
-
-#     # if every information has been filled out
-#     @Rule(
-#         Book(return_time=MATCH.return_time),
-#         Book(return_date=MATCH.return_date),
-#         Book(dep_time=MATCH.dep_time),
-#         Book(dep_date=MATCH.dep_date),
-#         Book(dep_station=MATCH.dep_station),
-#         Book(arr_station=MATCH.arr_station),)
-#     def success_with_return(self, dep_station, arr_station, dep_date, dep_time, return_time, return_date):
-
-#         print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
-#               f"{dep_time}? And it will be a return on {return_date} at {return_time}? "
-#               f"Okay lol don't need to get so worked up about it...")
-
-#         print("\n\n" +
-
-#             scrape_to_string(
-#                 convert_station_name(dep_station)[0],
-#                 convert_station_name(arr_station)[0],
-#                 dep_date, dep_time, True, return_time, return_date))
-
-
-#     # if every information has been filled out
-#     @Rule(
-#         Book(return_ticket=False),
-#         Book(dep_time=MATCH.dep_time),
-#         Book(dep_date=MATCH.dep_date),
-#         Book(dep_station=MATCH.dep_station),
-#         Book(arr_station=MATCH.arr_station),)
-#     def success_wout_return(self, dep_station, arr_station, dep_date, dep_time):
-
-#         print(f"So you would like to depart from {dep_station} and arrive at {arr_station} on {dep_date} after "
-#               f"{dep_time}? And it will be a return on And it won't be a return? "
-#               f"Okay lol don't need to get so worked up about it...")
-
-#         print("\n\n" +
-
-#             scrape_to_string(
-#                 dep_station,
-#                 arr_station,
-#                 dep_date, dep_time, False, "", ""))
