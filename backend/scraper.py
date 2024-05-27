@@ -60,18 +60,19 @@ def scrape_data(response: requests.Response):
 
   arrival_time = datetime.fromisoformat(arrival_time)
   arrival_time = arrival_time.strftime("%Y-%m-%d %H:%M:%S")
-  
-  if(data["inwardJourneys"]):
-    r_depart_time  = data["inwardJourneys"][0]["timetable"]["scheduled"]["departure"]
+
+  if (data["inwardJourneys"]):
+    r_depart_time = data["inwardJourneys"][0]["timetable"]["scheduled"]["departure"]
     r_arrival_time = data["inwardJourneys"][0]["timetable"]["scheduled"]["arrival"]
-    r_duration     = data["inwardJourneys"][0]["duration"] 
+    r_duration = data["inwardJourneys"][0]["duration"]
 
     r_depart_time = datetime.fromisoformat(depart_time)
-    r_depart_time = depart_time.strftime("%Y-%m-%d %H:%M:%S")
+    formatted_depart_time = r_depart_time.strftime("%Y-%m-%d %H:%M:%S")
 
     r_arrival_time = datetime.fromisoformat(arrival_time)
-    r_arrival_time = arrival_time.strftime("%Y-%m-%d %H:%M:%S")
-    return depart_time, arrival_time, duration, r_depart_time, r_arrival_time, r_duration
+    formatted_arrival_time = r_arrival_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    return depart_time, arrival_time, duration, formatted_depart_time, formatted_arrival_time, r_duration
 
   return depart_time, arrival_time, duration
 
@@ -98,11 +99,11 @@ def scrape(destination :str,
     result, url = get_ticket_info(ticket_query, return_query)
     return scrape_data(result), url
   except Exception as e:
-    return e
+    return e, None
 
 def TestHarness():
   print(scrape("NRW", "LST", "10/06/2024", "15:00:00", False, "", ""))
-  print(scrape("NRW", "LST", "10/06/2024", "15:00:00", True, "20/06/2024", "16:00:00"))
+  print(scrape("NRW", "LST", "10/06/2024", "15:00:00", True, "16:00:00", "20/06/2024"))
 
 
 if __name__ == "__main__":

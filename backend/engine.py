@@ -157,7 +157,13 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
 
     if return_ticket:
 
-        print(return_time, return_date)
+        print(type(arr_station),
+              type(dep_station),
+              type(dep_date),
+              type(dep_time),
+              type(True),
+              type(return_time),
+              type(return_date))
 
         details, url = scrape(
             arr_station,
@@ -165,9 +171,10 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
             dep_date,
             dep_time,
             True,
-            str(return_time),
-            str(return_date))
+            return_time,
+            return_date)
 
+    print(details)
 
     dep_dt = dt.datetime.strptime(details[0], '%Y-%m-%d %H:%M:%S')
 
