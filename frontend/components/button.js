@@ -32,9 +32,11 @@ export default function Button(props) {
             <Text style={[
                 
                 styles(colors).text,
-            {
-                color: props.primary ? colors.card : {},
-            }]}>
+                props.primary ? {
+
+                    color: 'white',
+                } : {}
+            ]}>
                 {props.children}
                 
             </Text>

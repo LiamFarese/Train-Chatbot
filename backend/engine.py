@@ -375,6 +375,7 @@ def get_response(query: dict):
             (query['return'], query['time'], query['date'], query['departure'],
              query['destination']) = extract_entities(nlp(query['message']))
 
+
             valid = True
 
 
@@ -478,6 +479,7 @@ def get_response(query: dict):
 
                 valid = query['message'] != query['departure']
 
+                
             if valid:
 
                 query['destination'] = query['message']
@@ -607,7 +609,7 @@ def get_response(query: dict):
 
             responses.append(get_question('destination'))
             current_queries.append('destination')
-
+            
 
         if query['time'] is None:
 
@@ -681,7 +683,6 @@ def TestHarness():
         print(query['message'])
         query['message'] = input().lower()
         query = get_response(query)
-
 
 # if running this file, run the test harness
 if __name__ == '__main__':

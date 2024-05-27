@@ -2,10 +2,11 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/.vs
-/.idea
-/.venv
+.vs
+.idea
+.venv
 /venv
 /frontend/node_modules
-/backend/.idea
 /backend/__pycache__
+.expo
+/frontend/%ProgramData%
