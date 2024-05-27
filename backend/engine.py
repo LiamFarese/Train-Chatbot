@@ -259,6 +259,37 @@ def get_question(query):
     return question
 
 
+def try_extract_if_valid(message : str, extract_func, warning : str):
+
+    for word in message.split():
+
+        try:
+
+            return True, extract_func(word)
+
+        except:
+            pass
+
+
+    return False, warning
+
+
+def try_convert_time(message: str):
+
+    return try_extract_if_valid(message, convert_time,
+                                "The time you entered is in an invalid format. "
+                                "Perhaps try a single word answer, or try hour.minute! "
+                                "For example, 3.45pm.")
+
+
+def try_convert_date(message: str):
+
+    return try_extract_if_valid(message, convert_date,
+                                "The date you entered is in an invalid format. Perhaps try a single word answer,"
+                                "or try day/month/year (For example, 25/05/24),"
+                                "or even the day of the week (For example, today or Tuesday)!")
+
+
 def get_empty_query():
 
     return {
@@ -310,7 +341,7 @@ def get_response(query: dict):
         query['message'] = response
 
 
-    if 'undo' in query['message']:
+    if 'undo' in query['message'] and not ("don't" or "dont" or "not") in query['message']:
 
         print(query)
         query['message'] = 'Okay. We have undone the previous message.\n\n'
@@ -328,6 +359,8 @@ def get_response(query: dict):
             query['message'] += get_question(previous_query)
             return query
 
+
+    # validate responses #
 
     if query['current_query'] == "departure":
 
@@ -367,28 +400,24 @@ def get_response(query: dict):
 
     elif query['current_query'] == "date":
 
-        try:
+        valid, result = try_convert_date(query['message'])
 
-            query['date'] = convert_date(query['message'])
+        if valid:
 
-        except:
-
-            query['message'] = ("The date you entered is in and invalid format. "
-                                "Try day/month/year (For example, 25/05/24),"
-                                "or even the day of the week (For example, today or Tuesday)!")
-            valid = False
+            query['date'] = result
+        else:
+            query['message'] = result
 
 
     elif query['current_query'] == "time":
 
-        try:
+        valid, result = try_convert_time(query['message'])
 
-            query['time'] = convert_time(query['message'])
+        if valid:
 
-        except:
-
-            query['message'] = "The time you entered is in and invalid format. Try hour.minute! For example, 3.45pm."
-            valid = False
+            query['time'] = result
+        else:
+            query['message'] = result
 
 
     elif query['current_query'] == "return":
@@ -398,28 +427,24 @@ def get_response(query: dict):
 
     elif query['current_query'] == "return_date":
 
-        try:
+        valid, result = try_convert_date(query['message'])
 
-            query['return_date'] = convert_date(query['message'])
+        if valid:
 
-        except:
-
-            query['message'] = ("The date you entered is in and invalid format. "
-                                "Try day/month/year (For example, 25/05/24),"
-                                "or even the day of the week (For example, today or Tuesday)!")
-            valid = False
+            query['return_date'] = result
+        else:
+            query['message'] = result
 
 
     elif query['current_query'] == "return_time":
 
-        try:
+        valid, result = try_convert_time(query['message'])
 
-            query['return_time'] = convert_time(query['message'])
+        if valid:
 
-        except:
-
-            query['message'] = "The time you entered is in and invalid format. Try hour.minute! For example, 3.45pm."
-            valid = False
+            query['return_time'] = result
+        else:
+            query['message'] = result
 
 
     if valid:
