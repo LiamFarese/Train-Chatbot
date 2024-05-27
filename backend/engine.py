@@ -218,7 +218,7 @@ class Book(Fact):
     pass
 
 
-class TrainBot(KnowledgeEngine):
+class TrainBot():
 
     def __init__(self):
 
@@ -234,20 +234,20 @@ class TrainBot(KnowledgeEngine):
         return self.response, self.fact_string
 
     # if the user types "undo", delete the last fact
-    def check_undo(self, user_input):
-
-        user_input = user_input.lower()
-
-        if "undo" in user_input:
-
-            remove_key = list(self.facts.keys())[-1]
-            remove_fact = self.facts[remove_key]
-            self.retract(remove_fact)
-            print(self.facts)
-            return True
-
-        # unsuccessful
-        return False
+    #def check_undo(self, user_input):
+#
+    #    user_input = user_input.lower()
+#
+    #    if "undo" in user_input:
+#
+    #        remove_key = list(self.facts.keys())[-1]
+    #        remove_fact = self.facts[remove_key]
+    #        self.retract(remove_fact)
+    #        print(self.facts)
+    #        return True
+#
+    #    # unsuccessful
+    #    return False
 
 
     # station clarification used in multiple functions
@@ -301,8 +301,6 @@ class TrainBot(KnowledgeEngine):
             return None
 
 
-    #@Rule(AND(NOT(Book(dep_station=W())),
-    #      NOT(Book(arr_station=W()))))
     @Rule(NOT(Book(dep_station=W())))
     def get_dep_station(self):
 
@@ -456,18 +454,109 @@ class TrainBot(KnowledgeEngine):
     #                arr_station,
     #                dep_date, dep_time, False, "", ""))
 
-class Context:
+def get_response(user_input: str):
 
-    #def __init__(self, return_ticket:bool , time :str, date :str, departure :str, destination :str, return_time :str,
-    #             return_date :str):
-#
-    #    self.return_ticket = return_ticket
-    #    self.time = time
-    #    self.date = date
-    #    self.departure = departure
-    #    self.destination = destination
-    #    self.return_time = return_time
-    #    self.return_date = return_date
+    response = None
+    fact_string = ''
+
+    if user_input is None:
+
+        response = random.choice([
+
+            "Hello! What sort of journey will you be making?",
+            "Hi! How can I help you today?",
+            "Hey! What journey are you looking to make?",
+        ])
+
+        response += ' (' + random.choice([
+
+            "Make sure to check the Help button at the top right if you don’t know where to start!",
+            "Press the Help button at the top right for guidance!",
+            "Use the help button in the top right if you need advice!",
+        ]) + ')'
+
+        return response, fact_string
+
+
+    context = Context(user_input)
+    print(context.to_string())
+
+
+    # check for errors #
+
+
+
+    # if facts missing, request #
+
+    if response is None:
+
+        responses = []
+        fact_strings = []
+
+        if context.departure is None:
+
+            responses.append(random.choice([
+
+                "From which station would you like to depart?",
+                "Which station will you be departing from?",
+                "What is the name of the station you will be departing from?"
+            ]))
+
+            fact_strings.append('from')
+
+
+        if context.destination is None:
+
+            responses.append(random.choice([
+
+                "Which station would you like to go to?",
+                "Which station will you be arriving at?",
+                "What is the name of the station of arrival?",
+            ]))
+
+            fact_strings.append('to')
+
+
+        if context.time is None:
+
+            responses.append(random.choice([
+
+                "What time would you like to depart?",
+                "When in the day will you be departing?",
+                "At what hour will you depart?",
+            ]))
+
+            fact_strings.append('')
+
+
+        if context.date is None:
+
+            responses.append(random.choice([
+
+                "What day will you be leaving?",
+                "What will be the date of your departure?",
+                "What day are you going to get the train?",
+            ]))
+
+            fact_strings.append('')
+
+
+        if len(responses) == 0:
+
+            response = "All facts acquired!"
+
+        else:
+
+            response_index = random.randint(0, len(responses) - 1)
+
+            response = responses[response_index]
+            fact_string = fact_strings[response_index]
+
+
+    return response, f'{context.to_string()}{fact_string}'
+
+
+class Context:
 
     def __init__(self, string: str):
 
@@ -475,13 +564,16 @@ class Context:
 
         string_nlp = nlp(string)
 
-        self.return_ticket = \
-            self.time = \
-            self.date = \
-            self.departure = \
-            self.destination = \
-            self.return_time = \
-            self.return_date = None
+        self.return_ticket =\
+            self.time =\
+            self.date =\
+            self.departure =\
+            self.destination =\
+            self.return_time =\
+            self.return_date =\
+            self.error_message = None
+
+        self.extraction_order = []
 
         # Extract entities
         entities = [(ent.text, ent.label_) for ent in string_nlp.ents]
@@ -495,21 +587,25 @@ class Context:
 
                 if ent[0] == token:
 
-                    if dep == "pobj" and head in ["from", "leave"]:
+                    if dep == "pobj" and head in ["from", "leave"] and self.departure is None:
 
+                        self.extraction_order.append('departure')
                         self.departure = ent[0]
 
-                    elif dep == "pobj" and head in ["to", "arrive"]:
+                    if dep == "pobj" and head in ["to", "arrive", "at"] and self.destination is None:
 
+                        self.extraction_order.append('destination')
                         self.destination = ent[0]
 
 
         if any((token.text.lower() == ("return" or "yes")) for token in string_nlp):
 
+            self.extraction_order.append('return')
             self.return_ticket = True
 
         if any((token.text.lower() == "no") for token in string_nlp):
 
+            self.extraction_order.append('return')
             self.return_ticket = False
 
 
@@ -517,20 +613,36 @@ class Context:
         # Extract time and date
         for token in string_nlp:
 
-            if token.ent_type_ == "TIME" and self.time is None:
+            if token.ent_type_ == "DATE":
+
+                if self.date is None:
+
+                    self.extraction_order.append('date')
+                    self.date = convert_date(token.text)
+
+            elif token.ent_type_ == "TIME" and self.time is None:
 
                 time_tokens.append(token.text)
-
-            elif token.ent_type_ == "DATE" and self.date is None:
-
-                self.date = convert_date(token.text)
 
 
         time_str = ''.join(time_tokens)
 
         if time_str != '':
 
+            self.extraction_order.append('time')
             self.time = convert_time(''.join(time_tokens))
+
+
+        self.empty = (
+
+            self.return_ticket is None and
+            self.time is None and
+            self.date is None and
+            self.departure is None and
+            self.destination is None and
+            self.return_time is None and
+            self.return_date is None
+        )
 
 
     def to_string(self):
@@ -547,11 +659,11 @@ class Context:
 
         if self.time is not None:
 
-            string += f'at {self.time} '
+            string += f'{self.time} '
 
         if self.date is not None:
 
-            string += f'on {self.date} '
+            string += f'{self.date} '
 
         if self.return_ticket is True:
 
@@ -559,16 +671,35 @@ class Context:
 
             if self.return_time is not None:
 
-                string += f'at {self.return_time} '
+                string += f'{self.return_time} '
 
             if self.return_date is not None:
 
-                string += f'on {self.return_date} '
+                string += f'{self.return_date} '
 
 
         return string
 
 
+# test harness to prove it works
+def TestHarness():
+
+    response, context = get_response(None)
+
+    while True:
+
+        print(response)
+        message = f'{context} {input()}'
+        response, context = get_response(message)
+
+
+# if running this file, run the test harness
+if __name__ == '__main__':
+
+    TestHarness()
+
+
+'''
 def bot_response(message: str, context: Context):
 
     #return_time = return_date = None
@@ -635,30 +766,7 @@ def bot_response(message: str, context: Context):
     message, fact_string = bot.run_with_response()
 
     return message, context, fact_string
-
-
-# test harness to prove it works
-def TestHarness():
-
-    print("Hello! \n")
-    context = Context("")
-    print(context.to_string())
-    fact_string = ""
-
-    while True:
-
-        print(fact_string)
-        message = f"{fact_string} {input()}"
-        response, context, fact_string = bot_response(message, context)
-        print(context.to_string())
-        print(response)
-
-
-# if running this file, run the test harness
-if __name__ == '__main__':
-
-    TestHarness()
-
+'''
 
 # class TrainBot(KnowledgeEngine):
 #     def __init__(self):
