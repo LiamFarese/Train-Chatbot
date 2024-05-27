@@ -526,7 +526,7 @@ def get_response(user_input: str):
                 "At what hour will you depart?",
             ]))
 
-            fact_strings.append('')
+            fact_strings.append('at')
 
 
         if context.date is None:
@@ -538,20 +538,20 @@ def get_response(user_input: str):
                 "What day are you going to get the train?",
             ]))
 
-            fact_strings.append('')
+            fact_strings.append('on')
 
-#
-#        if len(responses) == 0:
-#
-#            if context.return_ticket is None:
-#
-#                responses.append(random.choice([
-#
-#                    "Will you be getting a return ticket?",
-#                ]))
-#
-#                fact_strings.append('')
-#
+
+        if len(responses) == 0:
+
+            if context.return_ticket is None:
+
+                responses.append(random.choice([
+
+                    "Will you be getting a return ticket?",
+                ]))
+
+                fact_strings.append('')
+
 #            elif context.return_ticket is True:
 #
 #                if context.return_time is None:
@@ -590,15 +590,6 @@ class Context:
 
     def __init__(self, string: str):
 
-        string_nlp = nlp(string)
-
-        if 'return' in string:
-
-            string_nlp = nlp(string[0:string.index('return')])
-
-            self.return_ticket = 'not' in string
-
-
         self.return_ticket =\
             self.time =\
             self.date =\
@@ -607,6 +598,9 @@ class Context:
             self.return_time =\
             self.return_date =\
             self.error_message = None
+
+        string_nlp = nlp(string)
+
 
         self.extraction_order = []
 
@@ -621,6 +615,8 @@ class Context:
 
             for token, dep, head in dep_relations:
 
+                print(token, dep, head)
+
                 if ent[0] == token:
 
                     if dep == "pobj" and head in ["from", "leave"] and self.departure is None:
@@ -632,6 +628,19 @@ class Context:
 
                         self.extraction_order.append('destination')
                         self.destination = ent[0]
+
+
+        if 'return' in string:
+
+            string_nlp = nlp(string[string.index('return'):])
+            return_nlp = nlp(string[:string.index('return'):])
+
+            self.return_ticket = 'not' not in string
+
+
+        if 'yes' in string:
+
+            self.return_ticket = True
 
 
         time_tokens = []
@@ -688,6 +697,23 @@ class Context:
 
         string = ""
 
+        if self.return_ticket is True:
+
+            string += f'return. '
+
+            ##if self.return_time is not None:
+        ##
+        ##    string += f'{self.return_time} '
+        ##
+        ##if self.return_date is not None:
+        ##
+        ##    string += f'{self.return_date} '
+
+        elif self.return_ticket is False:
+
+            string += f'no return. '
+
+
         if self.departure is not None:
 
             string += f'from {self.departure} '
@@ -698,27 +724,11 @@ class Context:
 
         if self.time is not None:
 
-            string += f'{self.time} '
+            string += f'at {self.time} '
 
         if self.date is not None:
 
-            string += f'{self.date} '
-
-        if self.return_ticket is True:
-
-            string += f'return:true'
-
-            if self.return_time is not None:
-
-                string += f'return-time:{self.return_time}'
-
-            if self.return_date is not None:
-
-                string += f'return-date:{self.return_date}'
-
-        elif self.return_ticket is False:
-
-            string += f'return:false'
+            string += f'on {self.date} '
 
 
         return string
@@ -733,6 +743,7 @@ def TestHarness():
 
         print(response)
         message = f'{context}{input()}'
+        print(message)
         response, context = get_response(message)
 
 
