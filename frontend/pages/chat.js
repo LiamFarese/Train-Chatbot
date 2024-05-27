@@ -3,19 +3,23 @@ import axios from 'axios';
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Help from "./help";
 import Button from "../components/button";
+import { useCookies } from "react-cookie";
 
 export default function Chat() {
+
+    const [cookies, setCookie, removeCookie] = useCookies(["user_ID"])
 
     const colors = useTheme().colors;
 
     // States //
 
     // const [youAreLastSender, setYouAreLastSender] = useState(false)
-    const [currentTyping, setCurrentTyping] = useState(null)
+    const [currentTyping, setCurrentTyping] = useState(null);
     const [currentModal, setCurrentModal] = useState(null);
+    const [sessionID, setSessionID] = useState(null);
 
     // alternates between 'owner' and 'you', owner being first
     const [messages, setMessages] = useState([
@@ -45,7 +49,6 @@ export default function Chat() {
         //     "what's wrong with you?!"
         // ],
     ]);
-    
 
     // References //
 
@@ -55,11 +58,68 @@ export default function Chat() {
 
     // Functions //
 
+    // Load greeting message upon loading
+    useEffect(() => {
+        const getSessionID = () => {
+            try {
+                axios.post(`http://localhost:8000/session/start/${cookies.user_ID}`)
+                .then(() => {
+                    axios.get("http://localhost:8000/session")
+                    .then((res) => {
+                        const session = res.data.session_data
+                        console.log("Session: ", session)
+                        setSessionID(session.session_id);
+                    });
+                })
+                
+            } catch (error) {
+                console.error("Error creating a new session", error);
+            };
+        };
+
+        const getHello = () => {
+            try {
+                axios.get('http://localhost:8000/user/hello')
+                .then((res) => {
+                    //console.log(res.data);
+                    setMessages([res.data.message]);
+                });
+                
+            } catch (error) {
+                console.error("Error fetching hello", error);
+            };
+        };
+
+        const getUserID = () => {
+            try {
+                axios.get("http://localhost:8000/user/ID")
+                .then((res) => {
+                    console.log(res.data);
+                    setCookie("user_ID", res.data.user_ID);
+                });
+            } catch (error) {
+                console.error("Error setting cookie", error);
+            };
+        };
+
+        if (!cookies.user_ID){
+            getUserID();
+        };
+
+        if (!sessionID){
+            getSessionID();
+        };
+
+        getHello();
+
+        console.log(sessionID);
+    }, []);
+
     function getMessageBlocks(messages)
     {
         messageBlocks = []
         key = 0
-        you = true;
+        you = false;
 
         messages.forEach((message) => {
     
