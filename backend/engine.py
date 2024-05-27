@@ -388,9 +388,10 @@ def get_response(query: dict):
         query['message'] = response
 
 
+    # undoing #
+
     if 'undo' in query['message'] and not ("don't" or "dont" or "not") in query['message']:
 
-        print(query)
         query['message'] = 'Okay. We have undone the previous message.\n\n'
 
         if len(query['history']) == 0:
@@ -403,6 +404,40 @@ def get_response(query: dict):
             query['current_query'] = previous_query
             query['message'] += get_question(previous_query)
             return query
+
+
+    # query resetting #
+
+    if query['current_query'] == 'reset':
+
+        if 'yes' in query['message']:
+
+            query = get_empty_query()
+            query['message'] = "Okay. We have reset the query for you... Type in your new query..."
+        else:
+            query['message'] = "Nevermind, we have not reset your query! Answer the previous question..."
+
+            if len(query['history']) > 0:
+
+                query['current_query'] = query['history'].pop()
+            else:
+                query['current_query'] = None
+
+
+        return query
+
+
+    if 'reset' in query['message'] and not ("don't" or "dont" or "not") in query['message']:
+
+        if query['current_query'] is not None:
+
+            query['history'].insert(0, query['current_query'])
+
+
+        query['message'] = 'Are you sure? (yes or no)'
+        query['current_query'] = 'reset'
+
+        return query
 
 
     # validate responses #
@@ -602,21 +637,22 @@ def get_response(query: dict):
                     current_queries.append('return_time')
 
 
-        print(query)
-
         # if no questions to get, return ticket
         if len(responses) == 0:
 
-            query['message'] = scrape_to_string(
+            message = scrape_to_string(
                 query['departure'],
                 query['destination'],
                 query['date'],
                 query['time'],
                 query['return'],
                 query['return_time'],
-                query['return_date'],)
+                query['return_date'],) + \
+                "\nIf you would like to ask for another ticket, simply enter it below: "
 
-            query['current_query'] = 'done'
+
+            query = get_empty_query()
+            query['message'] = message
         else:
             response_index = random.randint(0, len(responses) - 1)
 
