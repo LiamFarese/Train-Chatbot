@@ -161,11 +161,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
     first_stop  = 0
     second_stop = 0
 
-    print(dep_station)
-    print(arr_station)
-
-    print(station_dict)
-
     if dep_station in station_dict:
 
         first_stop = station_dict[dep_station]
@@ -174,9 +169,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
     if arr_station in station_dict:
 
         second_stop = station_dict[arr_station]
-
-
-    print(f"{first_stop}, {second_stop}")
 
 
     predicted_delay = model.predict([[
@@ -242,6 +234,27 @@ def get_question(query):
             "What day are you going to get the train?",
         ])
 
+    elif query == 'return':
+
+        question = random.choice([
+
+            "Would you like a return ticket?",
+        ])
+
+    elif query == 'return_time':
+
+        question = random.choice([
+
+            "What time would you like to return?",
+        ])
+
+    elif query == 'return_date':
+
+        question = random.choice([
+
+            "What date would you like to return?",
+        ])
+
 
     return question
 
@@ -299,19 +312,21 @@ def get_response(query: dict):
 
     if 'undo' in query['message']:
 
+        print(query)
         query['message'] = 'Okay. We have undone the previous message.\n\n'
 
-        if len(['history']) == 0:
+        if len(query['history']) == 0:
 
-            return get_response(get_empty_query())
+            empty_query = get_response(get_empty_query())
+            empty_query['message'] = query['message'] + empty_query['message']
+            return empty_query
 
         else:
 
-            query['current_query'] = query['history'].pop()
-
-
-        query['message'] += get_question(query['current_query'])
-        return query
+            previous_query = query['history'].pop()
+            query['current_query'] = previous_query
+            query['message'] += get_question(previous_query)
+            return query
 
 
     if query['current_query'] == "departure":
@@ -352,11 +367,59 @@ def get_response(query: dict):
 
     elif query['current_query'] == "date":
 
-        query['date'] = query['message']
+        try:
+
+            query['date'] = convert_date(query['message'])
+
+        except:
+
+            query['message'] = ("The date you entered is in and invalid format. "
+                                "Try day/month/year (For example, 25/05/24),"
+                                "or even the day of the week (For example, today or Tuesday)!")
+            valid = False
+
 
     elif query['current_query'] == "time":
 
-        query['time'] = query['message']
+        try:
+
+            query['time'] = convert_time(query['message'])
+
+        except:
+
+            query['message'] = "The time you entered is in and invalid format. Try hour.minute! For example, 3.45pm."
+            valid = False
+
+
+    elif query['current_query'] == "return":
+
+        query['return'] = ('yes' or 'affirmative' or 'sure') in query['message']
+
+
+    elif query['current_query'] == "return_date":
+
+        try:
+
+            query['return_date'] = convert_date(query['message'])
+
+        except:
+
+            query['message'] = ("The date you entered is in and invalid format. "
+                                "Try day/month/year (For example, 25/05/24),"
+                                "or even the day of the week (For example, today or Tuesday)!")
+            valid = False
+
+
+    elif query['current_query'] == "return_time":
+
+        try:
+
+            query['return_time'] = convert_time(query['message'])
+
+        except:
+
+            query['message'] = "The time you entered is in and invalid format. Try hour.minute! For example, 3.45pm."
+            valid = False
 
 
     if valid:
@@ -368,6 +431,9 @@ def get_response(query: dict):
 
         responses = []
         current_queries = []
+
+
+        # get questions #
 
         if query['departure'] is None:
 
@@ -393,9 +459,38 @@ def get_response(query: dict):
             current_queries.append('date')
 
 
+        if query['return'] is None:
+
+            responses.append(get_question('return'))
+            current_queries.append('return')
+
+
+        if (query['return'] is True and
+                query['return_time'] is None):
+
+            responses.append(get_question('return_time'))
+            current_queries.append('return_time')
+
+
+        if (query['return'] is True and
+                query['return_date'] is None):
+
+            responses.append(get_question('return_date'))
+            current_queries.append('return_date')
+
+
+        print(query)
+
+        # if no questions to get, return ticket
         if len(responses) == 0:
 
-            query['message'] = "All facts acquired!"
+            query['message'] = scrape_to_string(
+                query['departure'],
+                query['destination'],
+                query['date'],
+                query['time'],
+                False,)
+
             query['current_query'] = 'done'
 
         else:
@@ -420,7 +515,6 @@ def TestHarness():
         print(query['message'])
         query['message'] = input().lower()
         query = get_response(query)
-        print(query)
 
 
 # if running this file, run the test harness
