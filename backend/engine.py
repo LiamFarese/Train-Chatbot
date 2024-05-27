@@ -630,12 +630,18 @@ class Context:
                         self.destination = ent[0]
 
 
+        return_section = False
+
         if 'return' in string:
 
-            string_nlp = nlp(string[string.index('return'):])
-            return_nlp = nlp(string[:string.index('return'):])
+            if '(return)' in string:
 
-            self.return_ticket = 'not' not in string
+                string_nlp = nlp(string[:string.index('(return)')])
+                return_nlp = nlp(string[string.index('(return)'):])
+                return_section = True
+
+
+            self.return_ticket = 'no ' not in string
 
 
         if 'yes' in string:
@@ -697,23 +703,6 @@ class Context:
 
         string = ""
 
-        if self.return_ticket is True:
-
-            string += f'return. '
-
-            ##if self.return_time is not None:
-        ##
-        ##    string += f'{self.return_time} '
-        ##
-        ##if self.return_date is not None:
-        ##
-        ##    string += f'{self.return_date} '
-
-        elif self.return_ticket is False:
-
-            string += f'no return. '
-
-
         if self.departure is not None:
 
             string += f'from {self.departure} '
@@ -729,6 +718,20 @@ class Context:
         if self.date is not None:
 
             string += f'on {self.date} '
+
+        if self.return_ticket is True:
+
+            string += f'(return) '
+
+            if self.return_time is not None:
+                string += f'{self.return_time} '
+
+            if self.return_date is not None:
+                string += f'{self.return_date} '
+
+        elif self.return_ticket is False:
+
+            string += f'(no return) '
 
 
         return string
