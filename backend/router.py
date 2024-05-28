@@ -71,42 +71,47 @@ def getUserID(request: Request):
         return response
 
 
-@app.post("/user/send-chat/")
-def chat(session_ID: Annotated[Union[str, None], Body()] = None, 
-         user_message: Annotated[Union[str, None], Body()] = None, 
-         context: Annotated[Union[dict, None], Body()] = None, 
-         db: Session = db_dependency):
+# @app.post("/user/send-chat/")
+# def chat(session_ID: Annotated[Union[str, None], Body()] = None, 
+#          user_message: Annotated[Union[str, None], Body()] = None, 
+#          context: Annotated[Union[dict, None], Body()] = None, 
+#          db: Session = db_dependency):
     
-    session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
+#     session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
-    #* Check if session exsists
-    if not session:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
+#     #* Check if session exsists
+#     if not session:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
     
-    #* Check that session is active
-    if not session.session_active:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
+#     #* Check that session is active
+#     if not session.session_active:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
     
-    new_timestamp = datetime.now().isoformat()
+#     new_timestamp = datetime.now().isoformat()
     
-    exisiting_history = session.chat_history
+#     exisiting_history = session.chat_history
     
-    exisiting_history.append({
-        "user": True,
-        "message": user_message,
-        "timestamp": new_timestamp
-    })
+#     exisiting_history.append({
+#         "user": True,
+#         "message": user_message,
+#         "timestamp": new_timestamp
+#     })
     
-    #* Update chat history
-    db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': exisiting_history})
+#     #* Update chat history
+#     db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': exisiting_history})
         
-    #* Update the session's timestamp
-    db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'timestamp': new_timestamp})
+#     #* Update the session's timestamp
+#     db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'timestamp': new_timestamp})
     
-    db.commit()
-    db.refresh(session)
+#     db.commit()
+#     db.refresh(session)
     
-    return {"message": "Message recieved and processed successfully"}
+#     return {"message": "Message recieved and processed successfully"}
+
+@app.posst("/user/send-chat/")
+def send_chat(message: str):
+    response = generateResponse(message)
+    return {"response": response}
 
 @app.get("/session")
 def getSession(db: Session = db_dependency):
