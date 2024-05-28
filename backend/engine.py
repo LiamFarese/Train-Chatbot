@@ -174,7 +174,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
             return_time,
             return_date)
 
-    print(details)
 
     dep_dt = dt.datetime.strptime(details[0], '%Y-%m-%d %H:%M:%S')
 
@@ -341,15 +340,15 @@ def try_convert_station_name(message: str):
             message += f" {code},"
 
 
-    return message, not multiple_found
+    return message, station_code is not None, multiple_found
 
 
-def get_empty_query():
+def get_empty_query(first_query=None):
 
     return {
 
         'message': None,
-        'current_query': None,
+        'current_query': first_query,
 
         'departure': None,
         'destination': None,
@@ -365,6 +364,13 @@ def get_empty_query():
 
 
 def get_response(query: dict):
+
+    # allows for easy debugging
+    if query['current_query'] is not None and query['message'] is None:
+
+        query['message'] = get_question(query['current_query'])
+        return query
+
 
     valid = query['current_query'] is not None
 
@@ -452,41 +458,59 @@ def get_response(query: dict):
 
     if query['current_query'] == "departure":
 
-        query['message'], valid = try_convert_station_name(query['message'])
+        query['message'], valid, multiple_found = try_convert_station_name(query['message'])
 
-        if valid:
-
-            if query['destination'] is not None:
-
-                valid = query['message'] != query['destination']
+        if not multiple_found:
 
             if valid:
 
-                query['departure'] = query['message']
+                if query['destination'] is not None:
+
+                    valid = query['message'] != query['destination']
+
+                if valid:
+
+                    query['departure'] = query['message']
+                else:
+                    query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                        'Type undo if you previously entered the wrong station or re-enter if you made a '
+                                        'mistake')
             else:
-                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
-                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
-                                    'mistake')
+
+                query['message'] = ('Sorry, but the station you entered is invalid. '
+                                    'You may have misspelled it. Perhaps try entering one word in the station name or '
+                                    'the city and we will show you a list of station accepted names.')
+        else:
+            valid = False
 
 
     elif query['current_query'] == "destination":
 
-        query['message'], valid = try_convert_station_name(query['message'])
+        query['message'], valid, multiple_found = try_convert_station_name(query['message'])
 
-        if valid:
+        if not multiple_found:
 
-            if query['destination'] is not None:
+            if valid and not multiple_found:
 
-                valid = query['message'] != query['departure']
+                if query['departure'] is not None:
 
-                
-            if valid:
+                    valid = query['message'] != query['departure']
 
-                query['destination'] = query['message']
+
+                if valid:
+
+                    query['destination'] = query['message']
+                else:
+                    query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                        'Type undo if you previously entered the wrong station or re-enter if you made a '
+                                        'mistake')
             else:
-                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
-                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
-                                    'mistake')
+
+                query['message'] = ('Sorry, but the station you entered is invalid. '
+                                    'You may have misspelled it. Perhaps try entering one word in the station name or '
+                                    'the city and we will show you a list of accepted station names.')
+        else:
+            valid = False
 
 
     elif query['current_query'] == "date":
@@ -675,7 +699,7 @@ def get_response(query: dict):
 # test harness to prove it works
 def TestHarness():
 
-    query = get_empty_query()
+    query = get_empty_query('departure')
     query = get_response(query)
 
     while True:
