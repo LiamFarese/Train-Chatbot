@@ -19,6 +19,7 @@
     "react-cookie": "^7.1.4",
     "react-dom": "18.2.0",
     "react-native": "0.74.1",
+    "react-native-hyperlink": "^0.0.22",
     "react-native-web": "~0.19.6"
   },
   "devDependencies": {
