@@ -108,7 +108,7 @@ def getUserID(request: Request):
     
 #     return {"message": "Message recieved and processed successfully"}
 
-@app.posst("/user/send-chat/")
+@app.post("/user/send-chat/")
 def send_chat(message: str):
     response = generateResponse(message)
     return {"response": response}
