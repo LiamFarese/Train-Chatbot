@@ -6,7 +6,6 @@ import styles from '../styles';
 import { useRef, useState, useEffect } from "react";
 import Help from "./help";
 import Button from "../components/button";
-import { useCookies } from "react-cookie";
 
 export default function Chat() {
 
@@ -20,33 +19,20 @@ export default function Chat() {
     const [sessionID, setSessionID] = useState(null);
 
     // alternates between 'owner' and 'you', owner being first
-    const [messages, setMessages] = useState([
+    const [messages, setMessages] = useState([]);
 
-        // [
-        //     "Hello, la la la la la la la la la la la la la I am a very long message!",
-        //     "do you even care?",
-        // ],
-
-        // [
-        //     "not really mate",
-        //     "not really...",
-        // ],
-
-        // [
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        // ],
-
-        // [
-        //     "what's wrong with you?!"
-        // ],
-    ]);
+    const [query, setQuery] = useState({
+        message: null,
+        current_query: null,
+        departure: null,
+        destination: null,
+        time: null,
+        date: null,
+        return: null,
+        return_time: null,
+        return_date: null,
+        history: []
+    })
     
 
     // References //
@@ -55,6 +41,23 @@ export default function Chat() {
     const scrollView = useRef()
 
     // Functions //
+
+    // Load greeting message upon loading
+    useEffect(() => {
+        const getHello = () => {
+            try {
+                axios.get('http://localhost:8000/user/hello')
+                .then((res) => {
+                    //console.log(res.data);
+                    setMessages([res.data.message]);
+                });
+                
+            } catch (error) {
+                console.error("Error fetching hello", error);
+            };
+        };
+        getHello();
+    }, []);
 
     function getMessageBlocks(messages)
     {
