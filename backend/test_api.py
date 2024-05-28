@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
-from engine import get_response
+from engine import get_response, get_empty_query
 
 app = FastAPI()
 
@@ -19,7 +19,7 @@ app.add_middleware(
 class Query(BaseModel):
     current_query: Optional[str] = None
     message: Optional[str] = None
-    return_: Optional[bool] = None
+    is_return: Optional[bool] = None
     time: Optional[str] = None
     date: Optional[str] = None
     departure: Optional[str] = None
@@ -31,13 +31,14 @@ class Query(BaseModel):
 @app.get("/user/hello")
 def hello():
     try:
-        return {"message": "Hello. How can I help? :)"}
+        return get_response(get_empty_query())
     except Exception as e:
         raise HTTPException(status.HTTP_404_NOT_FOUND) 
     
 @app.post("/send-chat")
 async def send_chat(query: Query):
   query_dict = query.dict()
+  print(query_dict)
   response_query = get_response(query_dict)
   return response_query
 

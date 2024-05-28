@@ -36,14 +36,13 @@ final_chatbot = False
 
 def convert_station_name(city):
 
-    city = city.upper()
-    station_code = station_codes.get(city)
+    station_code = station_codes.get(city.upper())
     multiple_found = False
 
     # if there is no station code, set to list of stations
     if station_code is None:
 
-        stations_with_city = [station for station in station_codes.keys() if city in station]
+        stations_with_city = [station for station in station_codes.keys().upper() if city in station]
 
         if stations_with_city:
 
@@ -52,7 +51,7 @@ def convert_station_name(city):
         else:
             station_code = None
 
-    return station_code, multiple_found
+    return city, multiple_found
 
 
 def convert_date(date_input):
@@ -99,15 +98,17 @@ def convert_time(input):
     return time_obj.strftime("%H:%M:%S")
 
 
-def extract_entities(user_input):
+def extract_entities(user_input: str):
 
     return_ticket = time = date = departure = destination = None
 
+    user_input_nlp = nlp(user_input)
+
     # Extract entities
-    entities = [(ent.text, ent.label_) for ent in user_input.ents]
+    entities = [(ent.text, ent.label_) for ent in user_input_nlp.ents]
 
     # Extract dependency relations
-    dep_relations = [(token.text, token.dep_, token.head.text) for token in user_input]
+    dep_relations = [(token.text, token.dep_, token.head.text) for token in user_input_nlp]
 
     for ent in entities:
 
@@ -132,15 +133,16 @@ def extract_entities(user_input):
 
                         destination = station
 
+    print(user_input)
+    print('return' in user_input)
+    if 'return' in user_input:
 
-    if any((token.text.lower() == "return")for token in user_input):
-
-        return_ticket = not any((token.text.lower() == "no") for token in user_input)
+        return_ticket = not ("no" in user_input)
 
 
     time_tokens = []
     # Extract time and date
-    for token in user_input:
+    for token in user_input_nlp:
 
         if token.ent_type_ == "TIME":
 
@@ -283,7 +285,7 @@ def get_question(query):
             "What day are you going to get the train?",
         ])
 
-    elif query == 'return':
+    elif query == 'is_return':
 
         question = random.choice([
 
@@ -387,7 +389,6 @@ def try_convert_station_name(message: str):
 
             if station_code is not None:
 
-                message = station_code
                 multiple_found = False
 
 
@@ -415,7 +416,7 @@ def get_empty_query(first_query=None):
         'time': None,
         'date': None,
 
-        'return': None,
+        'is_return': None,
         'return_time': None,
         'return_date': None,
 
@@ -438,8 +439,10 @@ def get_response(query: dict):
 
         if query['message'] is not None:
 
-            (query['return'], query['time'], query['date'], query['departure'],
-             query['destination']) = extract_entities(nlp(query['message']))
+            (query['is_return'], query['time'], query['date'], query['departure'],
+             query['destination']) = extract_entities(query['message'])
+
+            print(query['is_return'])
 
 
             valid = True
@@ -600,13 +603,13 @@ def get_response(query: dict):
             query['message'] = result
 
 
-    elif query['current_query'] == "return":
+    elif query['current_query'] == 'is_return':
 
-        query['return'] = ('yes' or 'affirmative' or 'sure') in query['message']
+        query['is_return'] = ('yes' or 'affirmative' or 'sure') in query['message']
 
-        if not query['return'] and not ('no' or 'negative') in query['message']:
+        if not query['is_return'] and not ('no' or 'negative') in query['message']:
 
-            query['return'] = None
+            query['is_return'] = None
             query['message'] = 'Sorry, you have entered in an invalid answer. Type yes, no, or undo.'
             valid = False
 
@@ -720,14 +723,14 @@ def get_response(query: dict):
         # do not ask the following questions until the previous are ready
         if len(responses) == 0:
 
-            if query['return'] is None:
+            if query['is_return'] is None:
 
-                responses.append(get_question('return'))
-                current_queries.append('return')
+                responses.append(get_question('is_return'))
+                current_queries.append('is_return')
 
 
             # do not ask the following questions until the previous are ready
-            if len(responses) == 0 and query['return']:
+            if len(responses) == 0 and query['is_return']:
 
                 if query['return_date'] is None:
 
@@ -749,7 +752,7 @@ def get_response(query: dict):
                 query['destination'],
                 query['date'],
                 query['time'],
-                query['return'],
+                query['is_return'],
                 query['return_time'],
                 query['return_date'],) + \
                 "\nIf you would like to ask for another ticket, simply enter it below: "
