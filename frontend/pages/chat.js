@@ -3,14 +3,11 @@ import axios from 'axios';
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Help from "./help";
 import Button from "../components/button";
-import { useCookies } from "react-cookie";
 
 export default function Chat() {
-
-    const [cookies, setCookie, removeCookie] = useCookies(["user_ID"])
 
     const colors = useTheme().colors;
 
@@ -22,61 +19,31 @@ export default function Chat() {
     const [sessionID, setSessionID] = useState(null);
 
     // alternates between 'owner' and 'you', owner being first
-    const [messages, setMessages] = useState([
+    const [messages, setMessages] = useState([]);
 
-        // [
-        //     "Hello, la la la la la la la la la la la la la I am a very long message!",
-        //     "do you even care?",
-        // ],
-
-        // [
-        //     "not really mate",
-        //     "not really...",
-        // ],
-
-        // [
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        // ],
-
-        // [
-        //     "what's wrong with you?!"
-        // ],
-    ]);
+    const [query, setQuery] = useState({
+        message: null,
+        current_query: null,
+        departure: null,
+        destination: null,
+        time: null,
+        date: null,
+        return: null,
+        return_time: null,
+        return_date: null,
+        history: []
+    })
+    
 
     // References //
 
     const textInput = useRef()
     const scrollView = useRef()
 
-
     // Functions //
 
     // Load greeting message upon loading
     useEffect(() => {
-        const getSessionID = () => {
-            try {
-                axios.post(`http://localhost:8000/session/start/${cookies.user_ID}`)
-                .then(() => {
-                    axios.get("http://localhost:8000/session")
-                    .then((res) => {
-                        const session = res.data.session_data
-                        console.log("Session: ", session)
-                        setSessionID(session.session_id);
-                    });
-                })
-                
-            } catch (error) {
-                console.error("Error creating a new session", error);
-            };
-        };
-
         const getHello = () => {
             try {
                 axios.get('http://localhost:8000/user/hello')
@@ -89,30 +56,7 @@ export default function Chat() {
                 console.error("Error fetching hello", error);
             };
         };
-
-        const getUserID = () => {
-            try {
-                axios.get("http://localhost:8000/user/ID")
-                .then((res) => {
-                    console.log(res.data);
-                    setCookie("user_ID", res.data.user_ID);
-                });
-            } catch (error) {
-                console.error("Error setting cookie", error);
-            };
-        };
-
-        if (!cookies.user_ID){
-            getUserID();
-        };
-
-        if (!sessionID){
-            getSessionID();
-        };
-
         getHello();
-
-        console.log(sessionID);
     }, []);
 
     function getMessageBlocks(messages)
@@ -143,7 +87,7 @@ export default function Chat() {
     // for submitting the message to the chatbot
     // edit when this functionality has been added
     const submitMessage = async () => {
-
+        console.log(currentTyping)
         // close function if message is invalid
         if (currentTyping == null || currentTyping == ''
             || currentTyping == undefined) return
@@ -153,17 +97,27 @@ export default function Chat() {
 
         newMessages = [...messages]
 
+        const updatedQuery = {
+            ...query,
+            message: currentTyping
+        };
+
         newMessages.push([currentTyping])
         setMessages(newMessages)
 
+        console.log(updatedQuery)
+
         // add code here //
         try {
-            const response = await axios.post('http://localhost:8000/user/send-chat/', {
-              currentTyping,
-            });
-            console.log(response)
+            const response = await axios.post('http://localhost:8000/send-chat/', updatedQuery);
             newMessages.push([response.data.message])
             setMessages(newMessages)
+            setQuery(prevQuery => ({
+                ...prevQuery,
+                ...response.data
+            }));
+            console.log(response.data)
+            console.log(query)
         } catch (error) {
             console.error('Error sending message:', error);
         };
