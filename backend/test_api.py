@@ -1,5 +1,5 @@
 from typing import Optional, List, Any
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -28,6 +28,13 @@ class Query(BaseModel):
     return_date: Optional[str] = None
     history: List[Any] = []
 
+@app.get("/user/hello")
+def hello():
+    try:
+        return {"message": "Hello. How can I help? :)"}
+    except Exception as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND) 
+    
 @app.post("/send-chat")
 async def send_chat(query: Query):
   query_dict = query.dict()

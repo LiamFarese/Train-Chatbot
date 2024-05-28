@@ -32,22 +32,6 @@ export default function Chat() {
 
     // alternates between 'owner' and 'you', owner being first
     const [messages, setMessages] = useState([]);
-
-    // useEffect(() => {
-    //     // Set query state to an object with null fields
-    //     setQuery({
-    //         message: null,
-    //         current_query: null,
-    //         departure: null,
-    //         destination: null,
-    //         time: null,
-    //         date: null,
-    //         return: null,
-    //         return_time: null,
-    //         return_date: null,
-    //         history: []
-    //     });
-    // }, []);
     
 
     // References //
@@ -55,14 +39,30 @@ export default function Chat() {
     const textInput = useRef()
     const scrollView = useRef()
 
-
     // Functions //
+
+    // Load greeting message upon loading
+    useEffect(() => {
+        const getHello = () => {
+            try {
+                axios.get('http://localhost:8000/user/hello')
+                .then((res) => {
+                    //console.log(res.data);
+                    setMessages([res.data.message]);
+                });
+                
+            } catch (error) {
+                console.error("Error fetching hello", error);
+            };
+        };
+        getHello();
+    }, []);
 
     function getMessageBlocks(messages)
     {
         messageBlocks = []
         key = 0
-        you = true;
+        you = false;
 
         messages.forEach((message) => {
     
