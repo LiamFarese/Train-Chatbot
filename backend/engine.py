@@ -55,29 +55,45 @@ def convert_station_name(city):
     return station_code, multiple_found
 
 
-def convert_date(input):
+def convert_date(date_input):
+
+    if 'the' in date_input:
+
+        date_input = date_input.replace('the', '')
+
 
     days_of_the_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
-    if input.lower() == "tomorrow":
+    if date_input.lower() == "tomorrow":
 
         return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
 
-    elif input.lower() == "today":
-        return datetime.now()
+    elif date_input.lower() == "today":
+        return datetime.now().strftime("%d/%m/%Y")
 
-    elif input.lower() in days_of_the_week:
+    elif date_input.lower() in days_of_the_week:
 
         # Calculate date for the next occurrence of the specified day of the week
         today = datetime.now()
-        days_until_target_day = ((days_of_the_week.index(input.lower()) - today.weekday()) + 7) % 7
+        days_until_target_day = ((days_of_the_week.index(date_input.lower()) - today.weekday()) + 7) % 7
         return (today + relativedelta(days=days_until_target_day)).strftime("%d/%m/%Y")
 
+    date = parse_date(date_input)
 
-    return parse_date(input).strftime("%d/%m/%Y")
+    if date < datetime.now():
+
+        return None
+
+
+    return date.strftime("%d/%m/%Y")
 
 
 def convert_time(input):
+
+    if '.' in input:
+
+        return None
+
 
     time_obj = parse_date(input).time()
     return time_obj.strftime("%H:%M:%S")
@@ -174,7 +190,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
             return_time,
             return_date)
 
-    print(details)
 
     dep_dt = dt.datetime.strptime(details[0], '%Y-%m-%d %H:%M:%S')
 
@@ -263,7 +278,7 @@ def get_question(query):
 
         question = random.choice([
 
-            "Would you like a return ticket?",
+            "Would you like a return ticket? (yes, no)",
         ])
 
     elif query == 'return_time':
@@ -286,6 +301,26 @@ def get_question(query):
 
 def try_extract_if_valid(message: str, extract_func, warning: str):
 
+    # try entities
+    for ent in nlp(message).ents:
+
+        try:
+
+            return True, extract_func(ent.text)
+
+        except:
+            pass
+
+    # try whole sentence
+    try:
+
+        return True, extract_func(message)
+
+    except:
+        pass
+
+
+    # now split everything up
     for word in message.split():
 
         try:
@@ -301,18 +336,33 @@ def try_extract_if_valid(message: str, extract_func, warning: str):
 
 def try_convert_time(message: str):
 
-    return try_extract_if_valid(message, convert_time,
-                                "The time you entered is in an invalid format. "
-                                "Perhaps try a single word answer, or try hour.minute! "
-                                "For example, 3.45pm.")
+    warning = ("The time you entered is in an invalid format. "
+            "Perhaps try a single word answer without a fullstop. Maybe try hour:minute! "
+            "For example, 15:45")
+
+    result = try_extract_if_valid(message, convert_time, warning)
+
+    if result[1] is None:
+
+        return False, warning
+
+
+    return result
 
 
 def try_convert_date(message: str):
 
-    return try_extract_if_valid(message, convert_date,
+    result = try_extract_if_valid(message, convert_date,
                                 "The date you entered is in an invalid format. Perhaps try a single word answer,"
                                 "or try day/month/year (For example, 25/05/24),"
                                 "or even the day of the week (For example, today or Tuesday)!")
+
+    if result[1] is None:
+
+        return False, None
+
+
+    return result
 
 
 def try_convert_station_name(message: str):
@@ -341,15 +391,15 @@ def try_convert_station_name(message: str):
             message += f" {code},"
 
 
-    return message, not multiple_found
+    return message, station_code is not None, multiple_found
 
 
-def get_empty_query():
+def get_empty_query(first_query=None):
 
     return {
 
         'message': None,
-        'current_query': None,
+        'current_query': first_query,
 
         'departure': None,
         'destination': None,
@@ -365,6 +415,13 @@ def get_empty_query():
 
 
 def get_response(query: dict):
+
+    # allows for easy debugging
+    if query['current_query'] is not None and query['message'] is None:
+
+        query['message'] = get_question(query['current_query'])
+        return query
+
 
     valid = query['current_query'] is not None
 
@@ -452,41 +509,59 @@ def get_response(query: dict):
 
     if query['current_query'] == "departure":
 
-        query['message'], valid = try_convert_station_name(query['message'])
+        query['message'], valid, multiple_found = try_convert_station_name(query['message'])
 
-        if valid:
-
-            if query['destination'] is not None:
-
-                valid = query['message'] != query['destination']
+        if not multiple_found:
 
             if valid:
 
-                query['departure'] = query['message']
+                if query['destination'] is not None:
+
+                    valid = query['message'] != query['destination']
+
+                if valid:
+
+                    query['departure'] = query['message']
+                else:
+                    query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                        'Type undo if you previously entered the wrong station or re-enter if you made a '
+                                        'mistake')
             else:
-                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
-                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
-                                    'mistake')
+
+                query['message'] = ('Sorry, but the station you entered is invalid. '
+                                    'You may have misspelled it. Perhaps try entering one word in the station name or '
+                                    'the city and we will show you a list of station accepted names.')
+        else:
+            valid = False
 
 
     elif query['current_query'] == "destination":
 
-        query['message'], valid = try_convert_station_name(query['message'])
+        query['message'], valid, multiple_found = try_convert_station_name(query['message'])
 
-        if valid:
+        if not multiple_found:
 
-            if query['destination'] is not None:
+            if valid and not multiple_found:
 
-                valid = query['message'] != query['departure']
+                if query['departure'] is not None:
 
-                
-            if valid:
+                    valid = query['message'] != query['departure']
 
-                query['destination'] = query['message']
+
+                if valid:
+
+                    query['destination'] = query['message']
+                else:
+                    query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
+                                        'Type undo if you previously entered the wrong station or re-enter if you made a '
+                                        'mistake')
             else:
-                query['message'] = ('Sorry, but the arrival and departure stations cannot be identical. '
-                                    'Type undo if you previously entered the wrong station or re-enter if you made a'
-                                    'mistake')
+
+                query['message'] = ('Sorry, but the station you entered is invalid. '
+                                    'You may have misspelled it. Perhaps try entering one word in the station name or '
+                                    'the city and we will show you a list of accepted station names.')
+        else:
+            valid = False
 
 
     elif query['current_query'] == "date":
@@ -497,7 +572,12 @@ def get_response(query: dict):
 
             query['date'] = result
         else:
-            query['message'] = result
+
+            if result is None:
+
+                query['message'] = 'Sorry, but the date you enter cannot be before the current date.'
+            else:
+                query['message'] = result
 
 
     elif query['current_query'] == "time":
@@ -514,6 +594,12 @@ def get_response(query: dict):
     elif query['current_query'] == "return":
 
         query['return'] = ('yes' or 'affirmative' or 'sure') in query['message']
+
+        if not query['return'] and not ('no' or 'negative') in query['message']:
+
+            query['return'] = None
+            query['message'] = 'Sorry, you have entered in an invalid answer. Type yes, no, or undo.'
+            valid = False
 
 
     elif query['current_query'] == "return_date":
@@ -544,12 +630,12 @@ def get_response(query: dict):
                 else:
                     query['message'] \
                         = ('Sorry, but the return date and time cannot be before the departure date and time. '
-                           'Type undo if you previously entered the wrong station or re-enter if you made a'
+                           'Type undo if you previously entered the wrong station or re-enter if you made a '
                            'mistake')
             else:
                 query['message'] \
                     = ('Sorry, but the return date cannot be before the departure date. '
-                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'Type undo if you previously entered the wrong station or re-enter if you made a '
                        'mistake')
         else:
             query['message'] = result
@@ -580,7 +666,7 @@ def get_response(query: dict):
             else:
                 query['message'] \
                     = ('Sorry, but the return date and time cannot be before the departure date and time. '
-                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'Type undo if you previously entered the wrong station or re-enter if you made a '
                        'mistake')
         else:
             query['message'] = result
@@ -680,9 +766,10 @@ def TestHarness():
 
     while True:
 
-        print(query['message'])
+        print('message: ', query['message'])
         query['message'] = input().lower()
         query = get_response(query)
+        print(query)
 
 # if running this file, run the test harness
 if __name__ == '__main__':
