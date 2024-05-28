@@ -34,24 +34,25 @@ with open(station_names_path) as file:
 
 final_chatbot = False
 
+
 def convert_station_name(city):
 
     station_code = station_codes.get(city.upper())
-    multiple_found = False
+    print('station code:', station_code)
 
     # if there is no station code, set to list of stations
     if station_code is None:
 
-        stations_with_city = [station for station in station_codes.keys().upper() if city in station]
+        stations_with_city = [station for station in station_codes.keys() if city.upper() in station]
 
         if stations_with_city:
 
-            multiple_found = True
-            station_code = stations_with_city
+            return stations_with_city, True
         else:
-            station_code = None
+            return None, False
 
-    return city, multiple_found
+
+    return city, False
 
 
 def convert_date(date_input):
@@ -379,6 +380,7 @@ def try_convert_date(message: str):
 def try_convert_station_name(message: str):
 
     station_code, multiple_found = convert_station_name(message)
+    print(station_code, multiple_found)
 
     # if the user has not used a one word answer
     if station_code is None:
@@ -387,15 +389,12 @@ def try_convert_station_name(message: str):
 
             station_code, multiple_found = convert_station_name(ent.text)
 
-            if station_code is not None:
-
-                multiple_found = False
-
 
     if multiple_found:
 
         message = 'Did you mean any of the following stations:'
 
+        print('hola')
         for code in station_code:
 
             message += f" {code},"
