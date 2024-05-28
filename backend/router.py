@@ -1,5 +1,8 @@
-from fastapi import FastAPI, HTTPException, status, Request, Response, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, status, Request, Response, Depends, Header, Body
+from fastapi.middleware.cors import CORSMiddleware
 
+from typing import Union
+from typing_extensions import Annotated
 from pydantic import BaseModel
 from datetime import datetime
 import uuid
@@ -13,28 +16,18 @@ import models
 app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
 
-
-class ConnenctionManager:
-    def __init__(self):
-        self.active_connections : list[WebSocket] = []
-    
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-        
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
-
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8081"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class SessionBody(BaseModel):
     session_ID: str
     chat_hist: list
+    context: dict
     timestamp: str
     user_ID: str
     session_active: bool
@@ -48,14 +41,19 @@ def getDb():
 
 db_dependency = Depends(getDb)
 
-manager = ConnenctionManager
-
 def saveResponse(response: str):
     #TODO: Add logic to save response to db
     pass
 
 def generateResponse(user_message: str):
     return "Response from Backend"
+
+@app.get("/user/hello")
+def hello():
+    try:
+        return {"message": "Hello. How can I help? :)"}
+    except Exception as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
 
 @app.get("/user/ID")
 def getUserID(request: Request):
@@ -73,39 +71,47 @@ def getUserID(request: Request):
         return response
 
 
-@app.post("/user/send-chat/")
-def chat(session_ID: str, user_message: str, db: Session = db_dependency):
+# @app.post("/user/send-chat/")
+# def chat(session_ID: Annotated[Union[str, None], Body()] = None, 
+#          user_message: Annotated[Union[str, None], Body()] = None, 
+#          context: Annotated[Union[dict, None], Body()] = None, 
+#          db: Session = db_dependency):
     
-    session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
+#     session = db.query(models.Session).filter(models.Session.session_id == session_ID).first()
     
-    #* Check if session exsists
-    if not session:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
+#     #* Check if session exsists
+#     if not session:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session not found")
     
-    #* Check that session is active
-    if not session.session_active:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
+#     #* Check that session is active
+#     if not session.session_active:
+#         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Session is inactive")
     
-    new_timestamp = datetime.now().isoformat()
+#     new_timestamp = datetime.now().isoformat()
     
-    exisiting_history = session.chat_history
+#     exisiting_history = session.chat_history
     
-    exisiting_history.append({
-        "user": True,
-        "message": user_message,
-        "timestamp": new_timestamp
-    })
+#     exisiting_history.append({
+#         "user": True,
+#         "message": user_message,
+#         "timestamp": new_timestamp
+#     })
     
-    #* Update chat history
-    db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': exisiting_history})
+#     #* Update chat history
+#     db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': exisiting_history})
         
-    #* Update the session's timestamp
-    db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'timestamp': new_timestamp})
+#     #* Update the session's timestamp
+#     db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'timestamp': new_timestamp})
     
-    db.commit()
-    db.refresh(session)
+#     db.commit()
+#     db.refresh(session)
     
-    return {"message": "Message recieved and processed successfully"}
+#     return {"message": "Message recieved and processed successfully"}
+
+@app.post("/user/send-chat/")
+def send_chat(message: str):
+    response = generateResponse(message)
+    return {"response": response}
 
 @app.get("/session")
 def getSession(db: Session = db_dependency):
@@ -118,7 +124,7 @@ def getSession(db: Session = db_dependency):
     
     print(session.chat_history)
     
-    return {"message": "Session found", "data": session}
+    return {"message": "Session found", "session_data": session}
 
 @app.get("/session/{session_ID}")
 def getSession(session_ID: str, db: Session = db_dependency):
@@ -131,9 +137,9 @@ def getSession(session_ID: str, db: Session = db_dependency):
     
     return {"message": "Session found", "data": session}
 
-@app.post("/session/start/")
+@app.post("/session/start/{user_ID}/")
 def startSession(user_ID: str, db: Session = db_dependency):
-    
+
     #* Generate unique session ID
     session_ID = f"{user_ID}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
@@ -141,6 +147,7 @@ def startSession(user_ID: str, db: Session = db_dependency):
     session_data = SessionBody(
         session_ID=session_ID,
         chat_hist=[],
+        context={},
         timestamp=datetime.now().isoformat(),
         user_ID=user_ID,
         session_active=True
@@ -226,52 +233,3 @@ def resetSession(session_ID: str, db: Session = db_dependency):
     db.refresh(session)
     
     return {"message": "Session reset successfully"}
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            data = await websocket.receive_text()
-            
-            #TODO Validate "data" before parsing it
-            user_message = data
-            
-            #* Find active session for the user
-            # session = db.query(models.Session).filter(models.Session.user_id == user_ID, models.Session.session_active == True).first()
-            
-            # if not session:
-            #     await websocket.send_text("No active session found")
-            #     continue
-            
-            # new_timestamp = datetime.now().isoformat()
-            # session.chat_history.append({
-            #     "user": True,
-            #     "message": user_message,
-            #     "timestamp": new_timestamp
-            # })
-
-            # #* Update session with new message
-            # db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': session.chat_history, 'timestamp': new_timestamp})
-            # db.commit()
-            # db.refresh(session)
-            
-            #* Generate a response
-            model_response = generateResponse(user_message)
-            
-            # session.chat_history.append({
-            #     "user": False,
-            #     "message": model_response,
-            #     "timestamp": new_timestamp
-            # })
-
-            # db.query(models.Session).filter(models.Session.session_id == session.session_id).update({'chat_history': session.chat_history, 'timestamp': new_timestamp})
-            # db.commit()
-            # db.refresh(session)
-            
-            #* Send the bot response to the client
-            await websocket.send_text(model_response)
-    except WebSocketDisconnect:
-        websocket.close
-    except Exception as e:
-        print(e)
