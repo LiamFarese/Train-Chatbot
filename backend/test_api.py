@@ -43,5 +43,5 @@ async def send_chat(query: Query):
   return response_query
 
 if __name__ == "__main__":
-    uvicorn.run("test_api:app", host="localhost", port=8000, reload=True)
+    uvicorn.run("test_api:app", host="0.0.0.0", port=8000, reload=True)
 

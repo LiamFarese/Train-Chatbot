@@ -1,6 +1,7 @@
 
-import { Text, View } from 'react-native';
+import { Text, View, Linking } from 'react-native';
 import { useTheme } from '@react-navigation/native';
+import Hyperlink from 'react-native-hyperlink'
 import styles from '../styles';
 
 
@@ -19,14 +20,17 @@ export default function MessageBox(props){
                 alignSelf: props.fill ? 'flex-start' : 'flex-end',
             }
         ]}>
-            
-            <Text style={[styles(colors).text, {
+            <Hyperlink onPress={Linking.openURL}>
 
-                color: props.fill ? 'white' : colors.text,
-                textAlign: props.fill ? 'left' : 'right',
-            }]}>
-                {props.children}
-            </Text>
+                <Text style={[styles(colors).text, {
+
+                    color: props.fill ? 'white' : colors.text,
+                    textAlign: props.fill ? 'left' : 'right',
+                }]}>
+                    {props.children}
+                </Text>
+            </Hyperlink>
+
         </View>
     )
 }
