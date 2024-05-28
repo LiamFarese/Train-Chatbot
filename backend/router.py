@@ -5,6 +5,7 @@ from datetime import datetime
 import uuid
 import json
 
+from engine import Context, bot_response
 from database import engine, SessionLocal
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -104,8 +105,17 @@ def chat(session_ID: str, user_message: str, db: Session = db_dependency):
     
     db.commit()
     db.refresh(session)
+
+    # testing bot
+
+    #fetch context from database
+    context = Context(None, None, None, None, None, None, None)
+    response, context = bot_response(user_message)
+
+    # save context to database
+
+    return {"message": response}
     
-    return {"message": "Message recieved and processed successfully"}
 
 @app.get("/session")
 def getSession(db: Session = db_dependency):

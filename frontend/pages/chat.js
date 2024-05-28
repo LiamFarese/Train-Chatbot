@@ -3,11 +3,13 @@ import axios from 'axios';
 import { useTheme } from '@react-navigation/native';
 import MessageBlock from "../components/messageBlock";
 import styles from '../styles';
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Help from "./help";
 import Button from "../components/button";
 
 export default function Chat() {
+
+    const [query, setQuery] = useState({})
 
     const colors = useTheme().colors;
 
@@ -45,6 +47,22 @@ export default function Chat() {
         //     "what's wrong with you?!"
         // ],
     ]);
+
+    useEffect(() => {
+        // Set query state to an object with null fields
+        setQuery({
+            message: null,
+            current_query: null,
+            departure: null,
+            destination: null,
+            time: null,
+            date: null,
+            return: null,
+            return_time: null,
+            return_date: null,
+            history: []
+        });
+    }, []);
     
 
     // References //
@@ -96,11 +114,14 @@ export default function Chat() {
         newMessages.push([currentTyping])
         setMessages(newMessages)
 
+        setQuery(prevQuery => ({
+            ...prevQuery,
+            message: currentTyping
+        }));
+
         // add code here //
         try {
-            const response = await axios.post('http://localhost:8000/user/send-chat/', {
-              currentTyping,
-            });
+            const response = await axios.post('http://localhost:8000/send-chat/', query);
             console.log(response)
             newMessages.push([response.data.message])
             setMessages(newMessages)
