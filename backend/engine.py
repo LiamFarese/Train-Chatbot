@@ -278,7 +278,7 @@ def get_question(query):
 
         question = random.choice([
 
-            "Would you like a return ticket?",
+            "Would you like a return ticket? (yes, no)",
         ])
 
     elif query == 'return_time':
@@ -595,6 +595,12 @@ def get_response(query: dict):
 
         query['return'] = ('yes' or 'affirmative' or 'sure') in query['message']
 
+        if not query['return'] and not ('no' or 'negative') in query['message']:
+
+            query['return'] = None
+            query['message'] = 'Sorry, you have entered in an invalid answer. Type yes, no, or undo.'
+            valid = False
+
 
     elif query['current_query'] == "return_date":
 
@@ -755,7 +761,7 @@ def get_response(query: dict):
 # test harness to prove it works
 def TestHarness():
 
-    query = get_empty_query('time')
+    query = get_empty_query('return')
     query = get_response(query)
 
     while True:
