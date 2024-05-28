@@ -117,17 +117,26 @@ def extract_entities(user_input):
 
                 if dep == "pobj" and head in ["from", "leave"]:
 
-                    departure = ent[0]
+                    station, invalid = convert_station_name(ent[0])
+
+                    if not invalid:
+
+                        departure = station
+
 
                 elif dep == "pobj" and head in ["to", "arrive", "at"]:
 
-                    destination = ent[0]
+                    station, invalid = convert_station_name(ent[0])
 
-    if any((token.text.lower() == ("return" or "yes"))for token in user_input):
-        return_ticket = True
+                    if not invalid:
 
-    if any((token.text.lower() == "no" )for token in user_input):
-        return_ticket = False
+                        destination = station
+
+
+    if any((token.text.lower() == "return")for token in user_input):
+
+        return_ticket = not any((token.text.lower() == "no") for token in user_input)
+
 
     time_tokens = []
     # Extract time and date
