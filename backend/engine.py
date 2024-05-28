@@ -69,7 +69,7 @@ def convert_date(date_input):
         return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
 
     elif date_input.lower() == "today":
-        return datetime.now()
+        return datetime.now().strftime("%d/%m/%Y")
 
     elif date_input.lower() in days_of_the_week:
 
@@ -630,12 +630,12 @@ def get_response(query: dict):
                 else:
                     query['message'] \
                         = ('Sorry, but the return date and time cannot be before the departure date and time. '
-                           'Type undo if you previously entered the wrong station or re-enter if you made a'
+                           'Type undo if you previously entered the wrong station or re-enter if you made a '
                            'mistake')
             else:
                 query['message'] \
                     = ('Sorry, but the return date cannot be before the departure date. '
-                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'Type undo if you previously entered the wrong station or re-enter if you made a '
                        'mistake')
         else:
             query['message'] = result
@@ -666,7 +666,7 @@ def get_response(query: dict):
             else:
                 query['message'] \
                     = ('Sorry, but the return date and time cannot be before the departure date and time. '
-                       'Type undo if you previously entered the wrong station or re-enter if you made a'
+                       'Type undo if you previously entered the wrong station or re-enter if you made a '
                        'mistake')
         else:
             query['message'] = result
@@ -761,7 +761,7 @@ def get_response(query: dict):
 # test harness to prove it works
 def TestHarness():
 
-    query = get_empty_query('return')
+    query = get_empty_query()
     query = get_response(query)
 
     while True:
