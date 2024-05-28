@@ -4,6 +4,7 @@ import { DefaultTheme, DarkTheme, NavigationContainer } from '@react-navigation/
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import colors from './colors'
 import Chat from './pages/chat';
+import { useState } from 'react';
 
 
 const Stack = createNativeStackNavigator();
@@ -11,13 +12,11 @@ const Stack = createNativeStackNavigator();
 export default function App() {
 
   const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? colors.darkColors : colors.lightColors;
-
-  console.log(DarkTheme)
+  const [darkMode, setDarkMode] = useState(scheme === 'dark')
 
   return (
 
-    <NavigationContainer theme={theme}>
+    <NavigationContainer theme={darkMode ? colors.darkColors : colors.lightColors}>
 
       <Stack.Navigator>
         
@@ -25,7 +24,8 @@ export default function App() {
           
           name="Chat"
           component={Chat}
-          options={{headerShown: false}}
+          options={{headerShown: false }}
+          initialParams={{ darkMode: darkMode, setDarkMode: setDarkMode }}
         />
       </Stack.Navigator>
     </NavigationContainer>

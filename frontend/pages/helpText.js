@@ -1,4 +1,4 @@
-import { Linking, Pressable, Text } from "react-native"
+import { Text } from "react-native"
 
 export default function HelpText(props) {
 
@@ -30,6 +30,8 @@ export default function HelpText(props) {
                 }}
             >
                 If you want to undo your previous statement, simply type 'undo'.
+                {'\n\n'}
+                If you want to reset your ticket, simply type 'reset'.
             </Text>
 
             {'\n'}{'\n'}{'\n'}
@@ -45,7 +47,7 @@ export default function HelpText(props) {
             </Text>
 
             {'\n'}{'\n'} - The departure time for your journey.
-            {'\n'}{'\n'} - Your station of arrival. If you do not know the exact station's name, we will tell you all the possibilities
+            {'\n'}{'\n'} - Your station of arrival. If you do not know the exact station's name, type the name of the city or town and we will tell you all the possibilities
             {'\n'}{'\n'} - Your station of departure.
             {'\n'}{'\n'} - If you are getting a return ticket and the time and date of departure from the return station.
 

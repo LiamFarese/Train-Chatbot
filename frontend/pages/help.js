@@ -26,7 +26,7 @@ export default function Help(props) {
             <View style={{
 
                 flex: 1,
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: 'rgba(0.5, 0.5, 0.5, 0.5)',
                 padding: 16,
             }}>
 

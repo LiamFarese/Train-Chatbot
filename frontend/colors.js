@@ -20,8 +20,8 @@ const darkColors = {
 
     colors: {
  
-        background: "rgb(1, 1, 1)",
-        border: "rgb(39, 39, 41)",
+        background: "#040926",
+        border: "rgb(10, 132, 255)",
         card: "#202947",
         notification: "rgb(255, 69, 58)",
         primary: "rgb(10, 132, 255)",

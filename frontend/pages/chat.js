@@ -7,7 +7,9 @@ import { useRef, useState, useEffect } from "react";
 import Help from "./help";
 import Button from "../components/button";
 
-export default function Chat() {
+const ip = 'localhost'
+
+export default function Chat({ route, navigation }) {
 
     const colors = useTheme().colors;
 
@@ -17,6 +19,7 @@ export default function Chat() {
     const [currentTyping, setCurrentTyping] = useState(null);
     const [currentModal, setCurrentModal] = useState(null);
     const [sessionID, setSessionID] = useState(null);
+    const [darkMode, setDarkMode] = useState(!route.params.darkMode)
 
     // alternates between 'owner' and 'you', owner being first
     const [messages, setMessages] = useState([]);
@@ -46,7 +49,7 @@ export default function Chat() {
     useEffect(() => {
         const getHello = () => {
             try {
-                axios.get('http://localhost:8000/user/hello')
+                axios.get('http://' + ip + ':8000/user/hello')
                 .then((res) => {
                     //console.log(res.data);
                     setMessages([res.data.message]);
@@ -109,7 +112,7 @@ export default function Chat() {
 
         // add code here //
         try {
-            const response = await axios.post('http://localhost:8000/send-chat/', updatedQuery);
+            const response = await axios.post('http://' + ip + ':8000/send-chat/', updatedQuery);
             newMessages.push([response.data.message])
             setMessages(newMessages)
             setQuery(prevQuery => ({
@@ -167,6 +170,18 @@ export default function Chat() {
 
 
                     {/* About Button */}
+
+                    <Button
+
+                        onPress={() => {
+                            
+                            setDarkMode(!darkMode)
+                            route.params.setDarkMode(darkMode);
+                        }}
+                    >
+                        {darkMode ? 'Dark' : 'Light'}
+
+                    </Button>
 
                     <Button
 

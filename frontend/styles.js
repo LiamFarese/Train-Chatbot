@@ -66,12 +66,15 @@ export default styles = (colors, pressed = false) => StyleSheet.create({
         backgroundColor: colors.card,
         borderRadius: 32,
         margin: 16,
+
+        borderWidth: 2,
+        borderColor: colors.border,
     },
 
     scrollViewContainer: {
 
         backgroundColor: colors.background,
-        borderRadius: 32,
+        borderRadius: 16,
         padding: 16,
         flex: 1,
     },
