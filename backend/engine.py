@@ -55,29 +55,45 @@ def convert_station_name(city):
     return station_code, multiple_found
 
 
-def convert_date(input):
+def convert_date(date_input):
+
+    if 'the' in date_input:
+
+        date_input = date_input.replace('the', '')
+
 
     days_of_the_week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
-    if input.lower() == "tomorrow":
+    if date_input.lower() == "tomorrow":
 
         return (datetime.now() + relativedelta(days=1)).strftime("%d/%m/%Y")
 
-    elif input.lower() == "today":
+    elif date_input.lower() == "today":
         return datetime.now()
 
-    elif input.lower() in days_of_the_week:
+    elif date_input.lower() in days_of_the_week:
 
         # Calculate date for the next occurrence of the specified day of the week
         today = datetime.now()
-        days_until_target_day = ((days_of_the_week.index(input.lower()) - today.weekday()) + 7) % 7
+        days_until_target_day = ((days_of_the_week.index(date_input.lower()) - today.weekday()) + 7) % 7
         return (today + relativedelta(days=days_until_target_day)).strftime("%d/%m/%Y")
 
+    date = parse_date(date_input)
 
-    return parse_date(input).strftime("%d/%m/%Y")
+    if date < datetime.now():
+
+        return None
+
+
+    return date.strftime("%d/%m/%Y")
 
 
 def convert_time(input):
+
+    if '.' in input:
+
+        return None
+
 
     time_obj = parse_date(input).time()
     return time_obj.strftime("%H:%M:%S")
@@ -285,6 +301,26 @@ def get_question(query):
 
 def try_extract_if_valid(message: str, extract_func, warning: str):
 
+    # try entities
+    for ent in nlp(message).ents:
+
+        try:
+
+            return True, extract_func(ent.text)
+
+        except:
+            pass
+
+    # try whole sentence
+    try:
+
+        return True, extract_func(message)
+
+    except:
+        pass
+
+
+    # now split everything up
     for word in message.split():
 
         try:
@@ -300,18 +336,33 @@ def try_extract_if_valid(message: str, extract_func, warning: str):
 
 def try_convert_time(message: str):
 
-    return try_extract_if_valid(message, convert_time,
-                                "The time you entered is in an invalid format. "
-                                "Perhaps try a single word answer, or try hour.minute! "
-                                "For example, 3.45pm.")
+    warning = ("The time you entered is in an invalid format. "
+            "Perhaps try a single word answer without a fullstop. Maybe try hour:minute! "
+            "For example, 15:45")
+
+    result = try_extract_if_valid(message, convert_time, warning)
+
+    if result[1] is None:
+
+        return False, warning
+
+
+    return result
 
 
 def try_convert_date(message: str):
 
-    return try_extract_if_valid(message, convert_date,
+    result = try_extract_if_valid(message, convert_date,
                                 "The date you entered is in an invalid format. Perhaps try a single word answer,"
                                 "or try day/month/year (For example, 25/05/24),"
                                 "or even the day of the week (For example, today or Tuesday)!")
+
+    if result[1] is None:
+
+        return False, None
+
+
+    return result
 
 
 def try_convert_station_name(message: str):
@@ -521,7 +572,12 @@ def get_response(query: dict):
 
             query['date'] = result
         else:
-            query['message'] = result
+
+            if result is None:
+
+                query['message'] = 'Sorry, but the date you enter cannot be before the current date.'
+            else:
+                query['message'] = result
 
 
     elif query['current_query'] == "time":
@@ -699,14 +755,15 @@ def get_response(query: dict):
 # test harness to prove it works
 def TestHarness():
 
-    query = get_empty_query('departure')
+    query = get_empty_query('time')
     query = get_response(query)
 
     while True:
 
-        print(query['message'])
+        print('message: ', query['message'])
         query['message'] = input().lower()
         query = get_response(query)
+        print(query)
 
 # if running this file, run the test harness
 if __name__ == '__main__':
