@@ -9,7 +9,18 @@ import Button from "../components/button";
 
 export default function Chat() {
 
-    const [query, setQuery] = useState({})
+    const [query, setQuery] = useState({
+        message: null,
+        current_query: null,
+        departure: null,
+        destination: null,
+        time: null,
+        date: null,
+        return: null,
+        return_time: null,
+        return_date: null,
+        history: []
+    })
 
     const colors = useTheme().colors;
 
@@ -20,49 +31,23 @@ export default function Chat() {
     const [currentModal, setCurrentModal] = useState(null);
 
     // alternates between 'owner' and 'you', owner being first
-    const [messages, setMessages] = useState([
+    const [messages, setMessages] = useState([]);
 
-        // [
-        //     "Hello, la la la la la la la la la la la la la I am a very long message!",
-        //     "do you even care?",
-        // ],
-
-        // [
-        //     "not really mate",
-        //     "not really...",
-        // ],
-
-        // [
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        //     "goblin",
-        // ],
-
-        // [
-        //     "what's wrong with you?!"
-        // ],
-    ]);
-
-    useEffect(() => {
-        // Set query state to an object with null fields
-        setQuery({
-            message: null,
-            current_query: null,
-            departure: null,
-            destination: null,
-            time: null,
-            date: null,
-            return: null,
-            return_time: null,
-            return_date: null,
-            history: []
-        });
-    }, []);
+    // useEffect(() => {
+    //     // Set query state to an object with null fields
+    //     setQuery({
+    //         message: null,
+    //         current_query: null,
+    //         departure: null,
+    //         destination: null,
+    //         time: null,
+    //         date: null,
+    //         return: null,
+    //         return_time: null,
+    //         return_date: null,
+    //         history: []
+    //     });
+    // }, []);
     
 
     // References //
@@ -101,7 +86,7 @@ export default function Chat() {
     // for submitting the message to the chatbot
     // edit when this functionality has been added
     const submitMessage = async () => {
-
+        console.log(currentTyping)
         // close function if message is invalid
         if (currentTyping == null || currentTyping == ''
             || currentTyping == undefined) return
@@ -111,20 +96,27 @@ export default function Chat() {
 
         newMessages = [...messages]
 
+        const updatedQuery = {
+            ...query,
+            message: currentTyping
+        };
+
         newMessages.push([currentTyping])
         setMessages(newMessages)
 
-        setQuery(prevQuery => ({
-            ...prevQuery,
-            message: currentTyping
-        }));
+        console.log(updatedQuery)
 
         // add code here //
         try {
-            const response = await axios.post('http://localhost:8000/send-chat/', query);
-            console.log(response)
+            const response = await axios.post('http://localhost:8000/send-chat/', updatedQuery);
             newMessages.push([response.data.message])
             setMessages(newMessages)
+            setQuery(prevQuery => ({
+                ...prevQuery,
+                ...response.data
+            }));
+            console.log(response.data)
+            console.log(query)
         } catch (error) {
             console.error('Error sending message:', error);
         };
