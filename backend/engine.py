@@ -268,8 +268,8 @@ def get_question(query):
         question = random.choice([
 
             "What time would you like to depart?",
-            "When in the day will you be departing?",
-            "At what hour will you depart?",
+            "At what time will you depart?",
+            "What time in the day will you depart?",
         ])
 
     elif query == 'date':
@@ -406,11 +406,14 @@ def try_convert_station_name(message: str, full_message: str = None):
 
     if multiple_found:
 
-        message = 'Did you mean any of the following stations:'
+        message = 'These are stations with similar names:\n\n'
 
         for code in station_code:
 
             message += f" {code},"
+
+
+        message += '\n\nWe could not find that station. Try entering one of the previous stations if you meant to write one of them.'
 
 
     return message, station_code is not None, multiple_found
@@ -779,6 +782,10 @@ def get_response(query: dict):
 
             query['message'] = responses[response_index]
             query['current_query'] = current_queries[response_index]
+
+    elif query['current_query'] is not None:
+
+        query['message'] += "\n\n(Don't forget to press the help button if you need help!)"
 
 
     return query
