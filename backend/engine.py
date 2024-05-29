@@ -38,7 +38,6 @@ final_chatbot = False
 def convert_station_name(city):
 
     station_code = station_codes.get(city.upper())
-    print('station code:', station_code)
 
     # if there is no station code, set to list of stations
     if station_code is None:
@@ -103,6 +102,7 @@ def extract_entities(user_input: str):
 
     return_ticket = time = date = departure = destination = None
 
+    user_input = user_input.lower()
     user_input_nlp = nlp(user_input)
 
     # Extract entities
@@ -119,29 +119,29 @@ def extract_entities(user_input: str):
 
                 if dep == "pobj" and head in ["from", "leave"]:
 
-                    station, invalid = convert_station_name(ent[0])
+                    station, valid, multiple_stations = try_convert_station_name(user_input)
 
-                    if not invalid:
+                    if valid and not multiple_stations:
 
                         departure = station
 
 
                 elif dep == "pobj" and head in ["to", "arrive", "at"]:
 
-                    station, invalid = convert_station_name(ent[0])
+                    station, valid, multiple_stations = try_convert_station_name(user_input)
 
-                    if not invalid:
+                    if valid and not multiple_stations:
 
                         destination = station
 
-    print(user_input)
-    print('return' in user_input)
+
     if 'return' in user_input:
 
         return_ticket = not ("no" in user_input)
 
 
     time_tokens = []
+
     # Extract time and date
     for token in user_input_nlp:
 
@@ -154,9 +154,13 @@ def extract_entities(user_input: str):
 
             date = convert_date(token.text)
 
+
     time_str = ''.join(time_tokens)
+
     if time_str != '':
+
         time = convert_time(''.join(time_tokens))
+
 
     return return_ticket, time, date, departure, destination
 
@@ -184,14 +188,6 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
         '')
 
     if return_ticket:
-
-        print(type(arr_station),
-              type(dep_station),
-              type(dep_date),
-              type(dep_time),
-              type(True),
-              type(return_time),
-              type(return_date))
 
         details, url = scrape(
             arr_station,
@@ -380,7 +376,7 @@ def try_convert_date(message: str):
 def try_convert_station_name(message: str):
 
     station_code, multiple_found = convert_station_name(message)
-    print(station_code, multiple_found)
+    full_message = message
 
     # if the user has not used a one word answer
     if station_code is None:
@@ -389,12 +385,25 @@ def try_convert_station_name(message: str):
 
             station_code, multiple_found = convert_station_name(ent.text)
 
+            if station_code is not None and not multiple_found:
+
+                message = station_code
+                break
+            else:
+
+                for station in station_codes.keys():
+
+                    if station.lower() in message:
+
+                        message = station.lower()
+                        multiple_found = False
+                        break
+
 
     if multiple_found:
 
         message = 'Did you mean any of the following stations:'
 
-        print('hola')
         for code in station_code:
 
             message += f" {code},"
@@ -425,6 +434,11 @@ def get_empty_query(first_query=None):
 
 def get_response(query: dict):
 
+    if query['message'] is not None:
+
+        query['message'] = query['message'].lower()
+
+
     # allows for easy debugging
     if query['current_query'] is not None and query['message'] is None:
 
@@ -440,9 +454,6 @@ def get_response(query: dict):
 
             (query['is_return'], query['time'], query['date'], query['departure'],
              query['destination']) = extract_entities(query['message'])
-
-            print(query['is_return'])
-
 
             valid = True
 
@@ -767,7 +778,6 @@ def get_response(query: dict):
 
 
     return query
-
 
 # test harness to prove it works
 def TestHarness():
