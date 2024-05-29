@@ -119,16 +119,15 @@ def extract_entities(user_input: str):
 
                 if dep == "pobj" and head in ["from", "leave"]:
 
-                    station, valid, multiple_stations = try_convert_station_name(user_input)
+                    station, valid, multiple_stations = try_convert_station_name(ent[0], user_input)
 
                     if valid and not multiple_stations:
 
                         departure = station
 
-
                 elif dep == "pobj" and head in ["to", "arrive", "at"]:
 
-                    station, valid, multiple_stations = try_convert_station_name(user_input)
+                    station, valid, multiple_stations = try_convert_station_name(ent[0], user_input)
 
                     if valid and not multiple_stations:
 
@@ -137,7 +136,7 @@ def extract_entities(user_input: str):
 
     if 'return' in user_input:
 
-        return_ticket = not ("no" in user_input)
+        return_ticket = not ("no " in user_input)
 
 
     time_tokens = []
@@ -373,13 +372,17 @@ def try_convert_date(message: str):
     return result
 
 
-def try_convert_station_name(message: str):
+def try_convert_station_name(message: str, full_message: str = None):
 
     station_code, multiple_found = convert_station_name(message)
-    full_message = message
+
+    if full_message is None:
+
+        full_message = message
+
 
     # if the user has not used a one word answer
-    if station_code is None:
+    if station_code is None or multiple_found:
 
         for ent in nlp(message).ents:
 
@@ -389,11 +392,12 @@ def try_convert_station_name(message: str):
 
                 message = station_code
                 break
-            else:
 
-                for station in station_codes.keys():
+            elif station_code is not None:
 
-                    if station.lower() in message:
+                for station in station_code:
+
+                    if station.lower() in full_message:
 
                         message = station.lower()
                         multiple_found = False
