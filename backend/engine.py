@@ -165,7 +165,7 @@ def extract_entities(user_input: str):
 
 
 def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
-                     return_ticket=False, return_time='', return_date=''):
+                     is_return=False, return_time='', return_date=''):
 
     with open('model.pickle', 'rb') as file:
         model = pickle.load(file)
@@ -182,20 +182,9 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
         dep_station,
         dep_date,
         dep_time,
-        False,
-        '',
-        '')
-
-    if return_ticket:
-
-        details, url = scrape(
-            arr_station,
-            dep_station,
-            dep_date,
-            dep_time,
-            True,
-            return_time,
-            return_date)
+        is_return,
+        return_time,
+        return_date)
 
 
     dep_dt = dt.datetime.strptime(details[0], '%Y-%m-%d %H:%M:%S')
@@ -228,7 +217,7 @@ def scrape_to_string(dep_station, arr_station, dep_date, dep_time,
         first_stop,
         second_stop]])
 
-    if return_ticket:
+    if is_return:
 
         return_time = return_date = ""
 
@@ -525,7 +514,7 @@ def get_response(query: dict):
 
         if query['current_query'] is not None:
 
-            query['history'].insert(0, query['current_query'])
+            query['history'].append(query['current_query'])
 
 
         query['message'] = 'Are you sure? (yes or no)'
@@ -705,7 +694,7 @@ def get_response(query: dict):
 
         if query['current_query'] is not None:
 
-            query['history'].insert(0, query['current_query'])
+            query['history'].append(query['current_query'])
 
 
         responses = []
@@ -763,6 +752,8 @@ def get_response(query: dict):
 
         # if no questions to get, return ticket
         if len(responses) == 0:
+
+            print(query)
 
             message = scrape_to_string(
                 query['departure'],
