@@ -79,10 +79,6 @@ def convert_date(date_input):
 
     date = parse_date(date_input)
 
-    if date < datetime.now():
-
-        return None
-
 
     return date.strftime("%d/%m/%Y")
 
